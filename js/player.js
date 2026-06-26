@@ -43,6 +43,7 @@ export function createPlayer(camera, dom, world) {
   function setActive(b) { active = !!b; if (!active) velocity.set(0, 0, 0); }
   // drag-to-look: yaw on X, pitch on Y (clamped) — mirrors PointerLockControls' math
   function look(dx, dy) {
+    if (!active) return;   // only when navigating on touch (never moves the camera otherwise)
     _euler.setFromQuaternion(camera.quaternion);
     _euler.y -= dx * 0.0026;
     _euler.x -= dy * 0.0026;

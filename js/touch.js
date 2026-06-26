@@ -87,10 +87,20 @@ export function createTouchControls({ player, onView, onMap }) {
       else if (t.identifier === lookId) { e.preventDefault(); lookMove(t); }
     }
   }, { passive: false });
+  const MOVE_FRAC = 0.45;   // left 45% of the screen is the move-zone (matches CSS)
   const endAll = (e) => {
     for (const t of e.changedTouches) {
-      if (t.identifier === joyId) joyEnd();
-      else if (t.identifier === lookId) lookEnd();
+      if (t.identifier === joyId) {
+        joyEnd();
+        // if another finger is still down in the move-zone, let it take over the
+        // joystick (otherwise movement would freeze until every finger lifts)
+        const n = [...e.touches].find((o) => o.identifier !== lookId && o.clientX < innerWidth * MOVE_FRAC);
+        if (n) joyStart(n);
+      } else if (t.identifier === lookId) {
+        lookEnd();
+        const n = [...e.touches].find((o) => o.identifier !== joyId && o.clientX >= innerWidth * MOVE_FRAC);
+        if (n) lookStart(n);
+      }
     }
   };
   window.addEventListener('touchend', endAll);
@@ -106,7 +116,9 @@ export function createTouchControls({ player, onView, onMap }) {
 
   return {
     isMobile: true,
-    show(v) { root.classList.toggle('hidden', !v); if (!v) joyEnd(); },
+    // hiding (a modal opened / nav paused) must also drop any in-progress look,
+    // or a still-down finger would keep rotating the camera behind the panel
+    show(v) { root.classList.toggle('hidden', !v); if (!v) { joyEnd(); lookId = null; moved = 0; } },
     setInteractable(v) { btnView.classList.toggle('lit', !!v); },
   };
 }
