@@ -89,8 +89,10 @@ async function boot() {
     go(roomId, yaw = 0) { const r = world.rooms[roomId]; if (r) { camera.position.set(r.cx, 1.7, r.cz); camera.rotation.set(0, yaw, 0); } },
     look(yaw) { camera.rotation.set(0, yaw, 0); },
     pos: () => camera.position.toArray().map((n) => +n.toFixed(1)),
-    stats: () => ({ pieces: art.pieces.length, rooms: Object.keys(world.rooms).length, collide: world.collide.length }),
+    stats: () => ({ pieces: art.pieces.length, rooms: Object.keys(world.rooms).length, collide: world.collide.length, visitors: visitors.npcs.length }),
     debug: () => art.debug(),
+    openDetail: () => art.pieces[0] && ui.openDetail(art.pieces[0]),
+    openCinema: () => ui.openCinema(FILMS),
   };
 
   // ---- interaction ----
