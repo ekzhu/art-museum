@@ -27,7 +27,7 @@ async function boot() {
   scene.background = new THREE.Color(0x14110d);
   scene.fog = new THREE.Fog(0x14110d, 26, 84);
 
-  const camera = new THREE.PerspectiveCamera(74, innerWidth / innerHeight, 0.08, 300);
+  const camera = new THREE.PerspectiveCamera(74, innerWidth / innerHeight, 0.1, 150);
 
   // lighting (architecture only — artworks are unlit for fidelity + zero cost)
   scene.add(new THREE.HemisphereLight(0xfff4e2, 0x3a3326, 1.05));

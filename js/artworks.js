@@ -18,9 +18,9 @@ const SLOT = 3.0;           // horizontal pitch between pieces
 const ART_Y = 2.75;         // vertical centre of a hung piece
 const MAX_W = 2.7, MAX_H = 3.1;
 const MAX_PARTITIONS = 5;
-const LOAD_RADIUS = 32;     // metres: stream textures within this of player
-const MAX_TEXTURES = 96;    // LRU cap on simultaneously-loaded wall textures (500px ≈ 1.6MB each)
-const MAX_INFLIGHT = 6;
+const LOAD_RADIUS = 46;     // metres: stream textures within this of player (covers a hall seen from its doorway)
+const MAX_TEXTURES = 140;   // LRU cap on simultaneously-loaded wall textures (500px ≈ 1.6MB each)
+const MAX_INFLIGHT = 8;
 
 const loader = new THREE.TextureLoader();
 loader.crossOrigin = 'anonymous';
@@ -150,7 +150,7 @@ export function placeArtworks(scene, world, artworks) {
     }
     // throttle streaming work to every few frames
     frameCount++;
-    if (frameCount % 4 === 0) {
+    if (frameCount % 3 === 0) {
       // re-prioritise the pending queue every tick: load NEAREST pieces first
       for (const p of queue) p.queued = false;
       queue.length = 0;
@@ -164,7 +164,7 @@ export function placeArtworks(scene, world, artworks) {
         if (!piece.failed) cands.push([d, piece]);
       }
       cands.sort((a, b) => a[0] - b[0]);
-      for (let i = 0; i < Math.min(cands.length, 28); i++) requestLoad(cands[i][1]);
+      for (let i = 0; i < Math.min(cands.length, 48); i++) requestLoad(cands[i][1]);
       pump();
     }
     // rebuild active raycast list
@@ -244,10 +244,11 @@ function buildPiece(hg, data, slot, M) {
     liner.position.z = -0.045; assembly.add(liner);
   }
 
-  // picture plane (unlit BasicMaterial: crisp colour, zero light cost)
+  // picture plane (unlit BasicMaterial: crisp colour, zero light cost).
+  // Sits clearly proud of the frame's front face (~0.02) to avoid z-fighting.
   const picMat = new THREE.MeshBasicMaterial({ color: M.placeholder, toneMapped: false });
   const picture = new THREE.Mesh(new THREE.PlaneGeometry(w, h), picMat);
-  picture.position.z = 0.03;
+  picture.position.z = 0.075;
   assembly.add(picture);
 
   // small brass picture-lamp above

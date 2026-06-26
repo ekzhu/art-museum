@@ -240,18 +240,18 @@ export function buildMuseum(scene) {
         root.add(liner);
         // wainscot band
         const wain = new THREE.Mesh(new THREE.PlaneGeometry(len, 1.15), wainMat);
-        orientPlane(wain, s, segC);
+        orientPlane(wain, s, segC, 0.05);
         wain.position.y = 0.575;
         root.add(wain);
         // fret border above wainscot
         const fm = fretMat.clone(); fm.map = fretTex.clone(); fm.map.wrapS = THREE.RepeatWrapping; fm.map.repeat.set(Math.max(1, Math.round(len / 1.1)), 1); fm.map.needsUpdate = true;
         const border = new THREE.Mesh(new THREE.PlaneGeometry(len, 0.32), fm);
-        orientPlane(border, s, segC);
+        orientPlane(border, s, segC, 0.06);
         border.position.y = 1.32;
         root.add(border);
         // crown frieze near ceiling
         const crown = new THREE.Mesh(new THREE.PlaneGeometry(len, 0.5), new THREE.MeshStandardMaterial({ color: col(accent).multiplyScalar(0.9), roughness: 0.6 }));
-        orientPlane(crown, s, segC);
+        orientPlane(crown, s, segC, 0.05);
         crown.position.y = WALL_H - 0.4;
         root.add(crown);
 
@@ -265,12 +265,15 @@ export function buildMuseum(scene) {
     }
   }
 
-  function orientPlane(mesh, s, segC) {
+  // `inward` nudges a plane toward the room interior so decorative bands do not
+  // sit exactly coplanar with the liner behind them (which causes z-fighting).
+  function orientPlane(mesh, s, segC, inward = 0) {
+    const ox = s.nx * inward, oz = s.nz * inward;
     if (s.orient === 'v') {
-      mesh.position.set(s.fixed, mesh.position.y, segC);
+      mesh.position.set(s.fixed + ox, mesh.position.y, segC + oz);
       mesh.rotation.y = s.nx > 0 ? Math.PI / 2 : -Math.PI / 2;
     } else {
-      mesh.position.set(segC, mesh.position.y, s.fixed);
+      mesh.position.set(segC + ox, mesh.position.y, s.fixed + oz);
       mesh.rotation.y = s.nz > 0 ? 0 : Math.PI;
     }
   }
