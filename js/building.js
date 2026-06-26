@@ -280,6 +280,15 @@ export function buildMuseum(scene) {
   buildAtrium(root, rooms.atrium, mat, lights, P, columnMat, trimMat);
   buildEntrance(root, rooms.portico, mat, lights, P, columnMat, trimMat, stoneMat, addCollide);
 
+  // outdoor sky dome + ground (seen over the plaza and from the open garden)
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(360, 28, 18),
+    new THREE.MeshBasicMaterial({ map: TX.sky(), side: THREE.BackSide, fog: false }));
+  scene.add(sky);
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(1400, 1400),
+    new THREE.MeshStandardMaterial({ color: 0x8f9c79, roughness: 1 }));
+  ground.rotation.x = -Math.PI / 2; ground.position.y = -0.06; scene.add(ground);
+  const sunLight = new THREE.DirectionalLight(0xfff4e0, 0.6); sunLight.position.set(60, 90, 40); scene.add(sunLight);
+
   // spawn on the plaza, south of the portico, looking north (-Z)
   const por = rooms.portico;
   const spawn = { x: por.cx, z: por.cz + CELL_D / 2 + 11, yaw: 0 };

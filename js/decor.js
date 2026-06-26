@@ -9,6 +9,8 @@ import * as THREE from 'three';
 import { HALL_BY_ID } from './curation.js';
 import { WALL_H, CELL_W, CELL_D } from './building.js';
 import * as TX from './textures.js';
+import { buildGarden } from './garden.js';
+import { placeBench, placeReception, placeStanchion, placeRope, signPanel } from './furniture.js';
 
 export function buildDecor(scene, world) {
   const g = new THREE.Group();
@@ -17,10 +19,10 @@ export function buildDecor(scene, world) {
 
   for (const id in world.rooms) {
     const room = world.rooms[id];
-    if (room.isAtrium) decorAtrium(g, room);
-    else if (room.isGarden) decorGarden(g, room);
-    else if (room.isLobby) decorLobby(g, room);
-    else if (room.hall) decorHall(g, room);
+    if (room.isAtrium) decorAtrium(g, room, world);
+    else if (room.isGarden) buildGarden(g, room, world);
+    else if (room.isLobby) decorLobby(g, room, world);
+    else if (room.hall) decorHall(g, room, world);
   }
   return g;
 }
@@ -103,23 +105,28 @@ function latticeScreen(parent, x, y, z, ry, w = 2.4, h = 3.2, accent = '#caa64a'
 }
 
 // --- per-room decorators ------------------------------------------------------
-function decorHall(g, room) {
+function decorHall(g, room, world) {
   const hall = room.hall;
   const { cx, cz } = room;
   // two lanterns flanking the room
   lantern(g, cx - CELL_W * 0.3, WALL_H - 1.4, cz - CELL_D * 0.32, 1.0, lanternColor(hall));
   lantern(g, cx + CELL_W * 0.3, WALL_H - 1.4, cz + CELL_D * 0.32, 1.0, lanternColor(hall));
   // name banner on the back wall, up high
-  banner(g, cx + CELL_W * 0.36, 4.0, cz, -Math.PI / 2, hall);
+  banner(g, cx + CELL_W * 0.36, 4.2, cz, -Math.PI / 2, hall);
+  // soft warm fill light so the hall reads well (kept few for performance)
+  const fill = new THREE.PointLight(0xfff0d8, 0.32, CELL_W, 2.0);
+  fill.position.set(cx, WALL_H - 1.5, cz); g.add(fill);
+  // a gallery bench, clear of the central partitions and the doorways
+  placeBench(g, world, cx - CELL_W * 0.24, cz + CELL_D * 0.3, 0, 3.2);
+  placeBench(g, world, cx + CELL_W * 0.24, cz - CELL_D * 0.3, 0, 3.2);
   // corner vitrines for object halls
   if (hall.display === 'pedestal' || hall.display === 'mixed') {
-    const dx = CELL_W * 0.34, dz = CELL_D * 0.34;
+    const dx = CELL_W * 0.36, dz = CELL_D * 0.36;
     vitrine(g, cx - dx, cz - dz, hall);
     vitrine(g, cx + dx, cz - dz, hall);
     if (hall.display === 'pedestal') { vitrine(g, cx - dx, cz + dz, hall); vitrine(g, cx + dx, cz + dz, hall); }
   } else {
-    // a tall lattice screen accent in a corner for 2-D halls
-    latticeScreen(g, cx - CELL_W * 0.36, 2.2, cz - CELL_D * 0.3, Math.PI / 2, 2.2, 3.4, hall.palette.accent);
+    latticeScreen(g, cx - CELL_W * 0.38, 2.4, cz - CELL_D * 0.3, Math.PI / 2, 2.4, 3.6, hall.palette.accent);
   }
 }
 
@@ -129,8 +136,12 @@ function lanternColor(hall) {
   return c.getHSL({}).l > 0.55 ? 0xd9342b : c.getHex();
 }
 
-function decorAtrium(g, room) {
+function decorAtrium(g, room, world) {
   const { cx, cz } = room;
+  // benches in the four diagonal bays (clear of the doorway axes)
+  for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+    placeBench(g, world, cx + sx * 6.4, cz + sz * 6.4, sx * sz > 0 ? Math.PI / 4 : -Math.PI / 4, 3.0);
+  }
   // grand central lantern cluster
   lantern(g, cx, WALL_H - 1.0, cz, 1.8, 0xd9342b);
   lantern(g, cx - 3.2, WALL_H - 2.0, cz - 3.2, 1.0);
@@ -149,12 +160,25 @@ function decorAtrium(g, room) {
   cap.position.set(cx, 3.1, cz + CELL_D * 0.36); g.add(cap);
 }
 
-function decorLobby(g, room) {
+function decorLobby(g, room, world) {
   const { cx, cz } = room;
-  lantern(g, cx - 4, WALL_H - 1.6, cz, 1.1);
-  lantern(g, cx + 4, WALL_H - 1.6, cz, 1.1);
-  planter(g, cx - CELL_W * 0.32, cz - CELL_D * 0.2);
-  planter(g, cx + CELL_W * 0.32, cz - CELL_D * 0.2);
+  lantern(g, cx - 5, WALL_H - 1.6, cz, 1.2);
+  lantern(g, cx + 5, WALL_H - 1.6, cz, 1.2);
+  lantern(g, cx, WALL_H - 1.2, cz, 1.5, 0xd9342b);
+  // reception desk (west side, facing arriving visitors), clear of the N–S axis
+  placeReception(g, world, cx - CELL_W * 0.27, cz - CELL_D * 0.16, Math.PI);
+  // gallery-guide / directory board on the west wall
+  const guide = signPanel('馆区导览  ·  Gallery Guide', '#2a1c12', '#e6c66a', 4.2, 1.0);
+  guide.position.set(cx - CELL_W * 0.5 + 0.35, 3.0, cz); guide.rotation.y = Math.PI / 2; g.add(guide);
+  // seating + greenery
+  placeBench(g, world, cx + CELL_W * 0.26, cz - 3, Math.PI / 2, 3.2);
+  placeBench(g, world, cx + CELL_W * 0.26, cz + 3, Math.PI / 2, 3.2);
+  planter(g, cx - CELL_W * 0.34, cz + CELL_D * 0.28);
+  planter(g, cx + CELL_W * 0.34, cz + CELL_D * 0.28);
+  // velvet rope leading the eye toward the atrium
+  placeStanchion(g, world, cx - 3.2, cz - CELL_D * 0.34);
+  placeStanchion(g, world, cx + 3.2, cz - CELL_D * 0.34);
+  placeRope(g, cx - 3.2, cz - CELL_D * 0.34, cx + 3.2, cz - CELL_D * 0.34);
 }
 
 function planter(g, x, z) {

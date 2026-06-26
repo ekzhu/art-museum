@@ -25,8 +25,8 @@ async function boot() {
   renderer.toneMappingExposure = 1.08;
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x14110d);
-  scene.fog = new THREE.Fog(0x14110d, 26, 84);
+  scene.background = new THREE.Color(0xcfc8b8);
+  scene.fog = new THREE.Fog(0xcfc8b8, 48, 165);
 
   const camera = new THREE.PerspectiveCamera(74, innerWidth / innerHeight, 0.1, 150);
 
