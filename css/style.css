@@ -196,3 +196,49 @@ button#enter:disabled { opacity: 0.5; cursor: progress; }
   #hall-name { font-size: 1.4rem; }
   .zh-title { font-size: 2rem; }
 }
+
+/* ============================ touch / mobile controls ===================== */
+#touch { position: fixed; inset: 0; z-index: 30; }
+.touch-zone { position: absolute; top: 0; bottom: 0; touch-action: none; -webkit-user-select: none; user-select: none; }
+#move-zone { left: 0; width: 45%; }
+#look-zone { right: 0; width: 55%; }
+
+/* dynamic joystick (anchored at the touch point; purely visual) */
+#joystick { position: fixed; width: 0; height: 0; pointer-events: none; z-index: 31; }
+#joy-base {
+  position: absolute; left: -56px; top: -56px; width: 112px; height: 112px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(40,32,22,0.42), rgba(20,16,11,0.30));
+  border: 2px solid rgba(202,166,74,0.55); box-shadow: 0 4px 18px rgba(0,0,0,0.45);
+}
+#joy-knob {
+  position: absolute; left: -29px; top: -29px; width: 58px; height: 58px; border-radius: 50%;
+  background: radial-gradient(circle at 38% 32%, #d8b85f, #9c7b2c);
+  border: 2px solid rgba(255,243,210,0.7); box-shadow: 0 3px 12px rgba(0,0,0,0.55);
+}
+
+/* floating action buttons */
+#touch-actions { position: fixed; right: 16px; bottom: 22px; display: flex; align-items: flex-end; gap: 14px; z-index: 32; }
+.tbtn {
+  -webkit-appearance: none; appearance: none; pointer-events: auto; touch-action: manipulation;
+  width: 66px; height: 66px; border-radius: 50%;
+  background: rgba(22,18,14,0.72); border: 1.5px solid rgba(202,166,74,0.6); color: #f0e6cf;
+  font: 600 0.86rem/1 "Georgia", serif; letter-spacing: 0.03em;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+}
+.tbtn:active { transform: scale(0.93); background: rgba(40,32,22,0.85); }
+.tbtn.on { background: var(--red); border-color: var(--gold); color: #fff; }
+.tbtn-primary { width: 86px; height: 86px; font-size: 1rem; border-color: var(--gold); background: rgba(124,31,23,0.7); }
+.tbtn-primary.lit { border-color: #ffe6a6; box-shadow: 0 0 0 2px rgba(255,230,166,0.5), 0 4px 18px rgba(0,0,0,0.5); animation: tlit 1.3s ease-in-out infinite; }
+@keyframes tlit { 0%,100% { box-shadow: 0 0 0 2px rgba(255,230,166,0.35), 0 4px 18px rgba(0,0,0,0.5); } 50% { box-shadow: 0 0 0 5px rgba(255,230,166,0.18), 0 4px 18px rgba(0,0,0,0.5); } }
+
+/* in touch mode, hide keyboard-only affordances */
+body.touch-mode #hint { display: none; }
+body.touch-mode #prompt kbd { display: none; }
+body.touch-mode #prompt { bottom: 120px; }
+body.touch-mode .controls-legend kbd { display: none; }
+
+/* larger close targets + safe-area padding on phones */
+@media (pointer: coarse) {
+  .panel .close { width: 44px; height: 44px; font-size: 1.2rem; }
+  #touch-actions { right: calc(16px + env(safe-area-inset-right)); bottom: calc(22px + env(safe-area-inset-bottom)); }
+}

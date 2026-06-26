@@ -13,6 +13,7 @@ import { buildTheatre, FILMS } from './theatre.js';
 import { createVisitors } from './npc.js';
 import { createPlayer } from './player.js';
 import { createUI } from './ui.js';
+import { createTouchControls } from './touch.js';
 
 const frame = () => new Promise((r) => requestAnimationFrame(r));
 
@@ -53,13 +54,16 @@ async function boot() {
   artworks.forEach((a) => (counts[a.hall] = (counts[a.hall] || 0) + 1));
 
   // ---- forward decls used by UI callbacks ----
-  let player, world, ui;
-  const onEnter = () => { ui.showResume(false); player && player.lock(); };
+  let player, world, ui, touch;
+  // phones & tablets have no pointer lock: "entering" just activates touch nav.
+  const isMobile = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+  const enterNav = () => { if (!player) return; isMobile ? player.setActive(true) : player.lock(); };
+  const onEnter = () => { ui.showResume(false); enterNav(); };
   const onTeleport = (roomId) => {
     const r = world.rooms[roomId];
     if (r) camera.position.set(r.cx, 1.7, r.isGarden ? r.cz + 4 : r.cz + CELL_D * 0.32);
     ui.showResume(false);
-    setTimeout(() => player.lock(), 60);
+    setTimeout(enterNav, 60);
   };
 
   ui = createUI({ halls: HALLS, periodInfo: PERIOD_INFO, building: BUILDING, stats, onEnter, onTeleport });
@@ -90,6 +94,7 @@ async function boot() {
     look(yaw) { camera.rotation.set(0, yaw, 0); },
     view(x, y, z, tx, ty, tz) { camera.position.set(x, y, z); camera.lookAt(tx, ty, tz); },
     pos: () => camera.position.toArray().map((n) => +n.toFixed(1)),
+    rot: () => [camera.rotation.x, camera.rotation.y].map((n) => +n.toFixed(3)),
     stats: () => ({ pieces: art.pieces.length, rooms: Object.keys(world.rooms).length, collide: world.collide.length, visitors: visitors.npcs.length }),
     debug: () => art.debug(),
     openDetail: (i = 0) => art.pieces[i] && ui.openDetail(art.pieces[i]),
@@ -115,15 +120,22 @@ async function boot() {
   };
   const interact = () => {
     if (ui.isModalOpen() || !looked) return;
-    if (looked.kind === 'art') { ui.openDetail(looked.piece); player.controls.unlock(); }
-    else if (looked.kind === 'cinema') { ui.openCinema(FILMS); player.controls.unlock(); }
+    if (looked.kind === 'art') { ui.openDetail(looked.piece); if (!isMobile) player.controls.unlock(); }
+    else if (looked.kind === 'cinema') { ui.openCinema(FILMS); if (!isMobile) player.controls.unlock(); }
+  };
+  const toggleMap = () => {
+    if (ui.toggleDirectory()) { if (!isMobile) player.controls.unlock(); }
+    else onEnter();
   };
   document.addEventListener('keydown', (e) => {
     if (e.code === 'KeyE') interact();
-    else if (e.code === 'KeyM') { if (ui.toggleDirectory()) player.controls.unlock(); else onEnter(); }
+    else if (e.code === 'KeyM') toggleMap();
     else if (e.code === 'Escape' && ui.isModalOpen()) { ui.closeModals(); ui.showResume(true); }
   });
   renderer.domElement.addEventListener('click', () => { if (player.isLocked()) interact(); });
+
+  // on-screen controls for touch devices (no-op stub on desktop)
+  touch = createTouchControls({ player, onView: interact, onMap: toggleMap });
 
   addEventListener('resize', () => {
     camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
@@ -157,7 +169,7 @@ async function boot() {
   function loop() {
     requestAnimationFrame(loop);
     const dt = Math.min(clock.getDelta(), 0.05);
-    player.update(dt);
+    if (!ui.isModalOpen()) player.update(dt);   // freeze movement while a panel/map is open
     const room = world.roomAt(camera.position.x, camera.position.z);
     ui.setRoom(room);
     art.update(camera, activeHalls(room));
@@ -171,6 +183,8 @@ async function boot() {
         else { looked = null; ui.setPrompt(null); }
       }
     } else { looked = null; ui.setPrompt(null); }
+    touch.show(player.isLocked() && !ui.isModalOpen());
+    touch.setInteractable(!!looked);
     renderer.render(scene, camera);
   }
   loop();
