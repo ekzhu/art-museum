@@ -16,7 +16,7 @@ const frame = () => new Promise((r) => requestAnimationFrame(r));
 
 async function boot() {
   const canvas = document.getElementById('scene');
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', logarithmicDepthBuffer: true });
   renderer.setSize(innerWidth, innerHeight);
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -86,6 +86,7 @@ async function boot() {
     look(yaw) { camera.rotation.set(0, yaw, 0); },
     pos: () => camera.position.toArray().map((n) => +n.toFixed(1)),
     stats: () => ({ pieces: art.pieces.length, rooms: Object.keys(world.rooms).length, collide: world.collide.length }),
+    debug: () => art.debug(),
   };
 
   // ---- interaction ----
@@ -128,7 +129,7 @@ async function boot() {
     player.update(dt);
     const room = world.roomAt(camera.position.x, camera.position.z);
     ui.setRoom(room);
-    art.update(camera.position, activeHalls(room));
+    art.update(camera, activeHalls(room));
     if (player.isLocked() && !ui.isModalOpen()) { looked = art.getLookedAt(camera); ui.setPrompt(looked); }
     else { looked = null; ui.setPrompt(null); }
     renderer.render(scene, camera);

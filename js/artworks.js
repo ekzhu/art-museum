@@ -86,6 +86,7 @@ export function placeArtworks(scene, world, artworks) {
   // Texture streaming (LRU)
   // ---------------------------------------------------------------------------
   let inflight = 0;
+  let loadsCount = 0, evictCount = 0; // diagnostics (thrash detection)
   const queue = [];
   const loaded = []; // pieces with a live texture, most-recent last
 
@@ -117,6 +118,7 @@ export function placeArtworks(scene, world, artworks) {
           piece.lastSeen = perfNow();
           drawPlaque(piece); // generate the label lazily, alongside the image
           loaded.push(piece);
+          loadsCount++;
           evict();
         },
         undefined,
@@ -136,22 +138,26 @@ export function placeArtworks(scene, world, artworks) {
       p.picture.material.color.copy(p.placeholderColor);
       p.picture.material.needsUpdate = true;
       if (p.plaqueTex) { p.plaqueTex.dispose(); p.plaqueTex = null; p.plaqueDrawn = false; p.plaqueMat.map = null; p.plaqueMat.color.set(0xcfc3a3); p.plaqueMat.needsUpdate = true; }
+      evictCount++;
     }
   }
 
   const tmp = new THREE.Vector3();
+  const frustum = new THREE.Frustum();
+  const projScreen = new THREE.Matrix4();
   let frameCount = 0;
-  function update(playerPos, activeHalls) {
+  function update(camera, activeHalls) {
+    const playerPos = camera.position;
     // toggle hall visibility
     pictureMeshes.length = 0;
-    for (const id in hallGroups) {
-      const vis = activeHalls.has(id);
-      hallGroups[id].visible = vis;
-    }
+    for (const id in hallGroups) hallGroups[id].visible = activeHalls.has(id);
+
     // throttle streaming work to every few frames
     frameCount++;
     if (frameCount % 3 === 0) {
-      // re-prioritise the pending queue every tick: load NEAREST pieces first
+      projScreen.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+      frustum.setFromProjectionMatrix(projScreen);
+      // re-prioritise the pending queue every tick: load NEAREST visible pieces first
       for (const p of queue) p.queued = false;
       queue.length = 0;
       const r2 = LOAD_RADIUS * LOAD_RADIUS;
@@ -160,8 +166,11 @@ export function placeArtworks(scene, world, artworks) {
         if (!activeHalls.has(piece.hallId)) continue;
         const d = tmp.copy(piece.center).sub(playerPos).lengthSq();
         if (d >= r2) continue;
-        if (piece.tex) { piece.lastSeen = perfNow(); continue; }
-        if (!piece.failed) cands.push([d, piece]);
+        const inView = frustum.containsPoint(piece.center);
+        // Only what is actually on screen counts as "kept alive" or gets loaded,
+        // so the working set ≈ visible pieces and never thrashes the LRU.
+        if (piece.tex) { if (inView) piece.lastSeen = perfNow(); continue; }
+        if (inView && !piece.failed) cands.push([d, piece]);
       }
       cands.sort((a, b) => a[0] - b[0]);
       for (let i = 0; i < Math.min(cands.length, 48); i++) requestLoad(cands[i][1]);
@@ -183,7 +192,7 @@ export function placeArtworks(scene, world, artworks) {
     return hits.length ? hits[0].object.userData.piece : null;
   }
 
-  return { update, getLookedAt, pieces, hallGroups, group };
+  return { update, getLookedAt, pieces, hallGroups, group, debug: () => ({ loads: loadsCount, evicts: evictCount, live: loaded.length }) };
 }
 
 // ---------------------------------------------------------------------------
