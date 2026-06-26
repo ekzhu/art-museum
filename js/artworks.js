@@ -287,6 +287,7 @@ function buildPiece(hg, data, slot, M) {
     data, hallId: M.hallId,
     picture, plaque, plaqueMat,
     center: new THREE.Vector3(slot.x, ART_Y, slot.z),
+    normalDir: { x: slot.nx, z: slot.nz },
     placeholderColor: new THREE.Color(M.placeholder),
     tex: null, queued: false, failed: false, lastSeen: 0, plaqueDrawn: false,
   };

@@ -93,6 +93,13 @@ async function boot() {
     debug: () => art.debug(),
     openDetail: () => art.pieces[0] && ui.openDetail(art.pieces[0]),
     openCinema: () => ui.openCinema(FILMS),
+    lookPiece: (i = 0) => {
+      const list = art.pieces.filter((p) => p.data.featured);
+      const p = list[i] || art.pieces[i]; if (!p) return;
+      const n = p.normalDir;
+      camera.position.set(p.center.x + n.x * 5.5, 2.1, p.center.z + n.z * 5.5);
+      camera.lookAt(p.center.x, 2.7, p.center.z);
+    },
   };
 
   // ---- interaction ----
