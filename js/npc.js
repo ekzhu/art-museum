@@ -83,9 +83,16 @@ export function createVisitors(scene, world, perHall = 2) {
 
   const dir = new THREE.Vector3();
   function update(dt, playerPos) {
+    // only render/animate visitors in nearby rooms (current + adjacent)
+    for (const id in groups) {
+      const rm = world.rooms[id];
+      groups[id].visible = Math.hypot(rm.cx - playerPos.x, rm.cz - playerPos.z) < CELL_W * 1.6;
+    }
     for (const npc of npcs) {
+      if (!groups[npc.roomId].visible) continue;
       if (npc.state === 'view') {
         npc.timer -= dt;
+        npc.group.position.y = 0;
         // gentle idle sway
         const s = Math.sin(performance.now() / 700 + npc.phase) * 0.04;
         npc.group.rotation.y = npc.face + s;

@@ -62,6 +62,20 @@ export function buildMuseum(scene) {
   scene.add(root);
   const placed = (mesh, x, y, z) => { mesh.position.set(x, y, z); root.add(mesh); return mesh; };
 
+  // Cache frieze materials by (colour, repeat) so the fret texture isn't cloned
+  // once per wall span (was ~95 GPU uploads).
+  const friezeCache = new Map();
+  const friezeMat = (fretTex, key, rep) => {
+    const k = key + '|' + rep;
+    let m = friezeCache.get(k);
+    if (!m) {
+      const tex = fretTex.clone(); tex.wrapS = THREE.RepeatWrapping; tex.repeat.set(rep, 1); tex.needsUpdate = true;
+      m = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.6 });
+      friezeCache.set(k, m);
+    }
+    return m;
+  };
+
   // ===========================================================================
   // Floors + ceilings
   // ===========================================================================
@@ -234,9 +248,9 @@ export function buildMuseum(scene) {
         const baseboard = new THREE.Mesh(boxFor(s, len, 0.4, 0.14), baseMat); place(baseboard, 0.2, 0.05);
         const wainscot = new THREE.Mesh(boxFor(s, len, 1.15, 0.1), wainMat); place(wainscot, 0.78, 0.04);
         const chair = new THREE.Mesh(boxFor(s, len, 0.18, 0.16), accentMat); place(chair, 1.42, 0.05);
-        const fm = new THREE.MeshStandardMaterial({ map: fretTex.clone(), roughness: 0.6 });
-        fm.map.wrapS = THREE.RepeatWrapping; fm.map.repeat.set(Math.max(1, Math.round(len / 1.1)), 1); fm.map.needsUpdate = true;
-        const frieze = new THREE.Mesh(new THREE.PlaneGeometry(len, 0.34), fm); place(frieze, 1.66, 0.085);
+        const rep = Math.max(1, Math.round(len / 1.1));
+        const frieze = new THREE.Mesh(new THREE.PlaneGeometry(len, 0.34), friezeMat(fretTex, hall ? hall.id : id, rep));
+        place(frieze, 1.66, 0.085);
         const cornice = new THREE.Mesh(boxFor(s, len, 0.45, 0.22), trimMat); place(cornice, WALL_H - 0.35, 0.06);
         const cornice2 = new THREE.Mesh(boxFor(s, len, 0.18, 0.34), accentMat); place(cornice2, WALL_H - 0.7, 0.04);
 

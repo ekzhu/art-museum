@@ -171,7 +171,7 @@ function bambooClump(g, x, z) {
   for (let i = 0; i < 7; i++) {
     const a = (i / 7) * Math.PI * 2, h = 3.6 + (i % 3) * 1.0;
     const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, h, 6), FOLIAGE(0x6b9b46));
-    stalk.position.set(x + Math.cos(a) * 0.3, h / 2, z + Math.sin(a) * 0.3); stalk.rotation.z = (Math.random ? 0 : 0); g.add(stalk);
+    stalk.position.set(x + Math.cos(a) * 0.3, h / 2, z + Math.sin(a) * 0.3); stalk.rotation.z = (i / 7 - 0.5) * 0.3; g.add(stalk);
     for (let j = 0; j < 3; j++) {
       const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.7, 4), FOLIAGE(0x76a851));
       leaf.position.set(x + Math.cos(a) * 0.3, h - 0.4 - j * 0.6, z + Math.sin(a) * 0.3); leaf.rotation.set(0.4, a, 0.6); g.add(leaf);

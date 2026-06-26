@@ -133,6 +133,8 @@ async function boot() {
     const { r, c } = room;
     const add = (rr, cc) => { const id = world.MAP[rr] && world.MAP[rr][cc]; if (id && world.rooms[id] && world.rooms[id].hall) activeSet.add(id); };
     add(r, c); add(r - 1, c); add(r + 1, c); add(r, c - 1); add(r, c + 1);
+    // cull per-hall fill lights to the active set (keeps the forward light loop small)
+    for (const id in world.rooms) { const fl = world.rooms[id].fillLight; if (fl) fl.visible = activeSet.has(id); }
     return activeSet;
   }
 

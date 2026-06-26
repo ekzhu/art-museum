@@ -201,7 +201,7 @@ export function createUI(opts) {
   }
   function toggleDirectory() {
     if (!directory.classList.contains('hidden')) { closeModals(); return false; }
-    detail.classList.add('hidden');
+    closeModals(); // close/stop any other modal (incl. the cinema iframe) first
     directory.classList.remove('hidden');
     modal = true;
     return true;
