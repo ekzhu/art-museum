@@ -10,6 +10,7 @@ import { HALL_BY_ID } from './curation.js';
 import { WALL_H, CELL_W, CELL_D } from './building.js';
 import * as TX from './textures.js';
 import { buildGarden } from './garden.js';
+import { buildCafe, buildShop } from './amenities.js';
 import { placeBench, placeReception, placeStanchion, placeRope, signPanel } from './furniture.js';
 
 export function buildDecor(scene, world) {
@@ -22,6 +23,8 @@ export function buildDecor(scene, world) {
     if (room.isAtrium) decorAtrium(g, room, world);
     else if (room.isGarden) buildGarden(g, room, world);
     else if (room.isLobby) decorLobby(g, room, world);
+    else if (room.isCafe) buildCafe(g, room, world);
+    else if (room.isShop) buildShop(g, room, world);
     else if (room.hall) decorHall(g, room, world);
   }
   return g;
@@ -68,7 +71,14 @@ function banner(parent, x, y, z, ry, hall) {
   x2.font = '600 30px Georgia, serif';
   x2.fillText((hall.name || '').toUpperCase(), 128, 660);
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
-  const m = new THREE.Mesh(new THREE.PlaneGeometry(1.25, 3.4), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85, side: THREE.DoubleSide }));
+  // Two single-sided planes back-to-back so the text reads correctly from BOTH
+  // sides (a plain double-sided plane mirrors the writing on its back face).
+  const geo = new THREE.PlaneGeometry(1.25, 3.4);
+  const m = new THREE.Group();
+  m.add(new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85 })));
+  const backTex = tex.clone(); backTex.wrapS = THREE.RepeatWrapping; backTex.repeat.x = -1; backTex.needsUpdate = true;
+  const back = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: backTex, roughness: 0.85 }));
+  back.rotation.y = Math.PI; m.add(back);
   m.position.set(x, y, z); m.rotation.y = ry; parent.add(m);
   // pole
   const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.5, 8), new THREE.MeshStandardMaterial({ color: 0x4a2f1c }));

@@ -79,8 +79,12 @@ export function buildGarden(parent, room, world) {
     koi.scale.set(1, 0.4, 0.5); koi.position.set(pcx + Math.cos(a) * 2.2, 0.12, pcz + Math.sin(a) * 1.8); g.add(koi);
   }
 
-  // ---- arched stone moon-bridge across the pond ----
+  // ---- arched stone moon-bridge across the pond (walkable) ----
   buildBridge(g, world, pcx - pr * 0.7, pcz, pcx + pr * 0.7, pcz);
+  // water is the obstacle, but leave the bridge corridor (z within ±1.1) open
+  const pcW = pr * 0.92;
+  world.collide.push({ minX: pcx - pcW, minZ: pcz - pr * 0.75, maxX: pcx + pcW, maxZ: pcz - 1.1 });
+  world.collide.push({ minX: pcx - pcW, minZ: pcz + 1.1, maxX: pcx + pcW, maxZ: pcz + pr * 0.65 });
 
   // ---- pavilion (亭) back-right ----
   buildPavilion(g, world, cx + CELL_W * 0.3, cz - CELL_D * 0.26);
@@ -93,11 +97,26 @@ export function buildGarden(parent, room, world) {
   // ---- stone lantern ----
   buildLantern(g, world, cx - CELL_W * 0.34, cz + CELL_D * 0.1);
 
-  // ---- plantings: pine + maple + bamboo ----
+  // ---- plantings: pine, maple, blossoms, bamboo, flowers, grass ----
   pine(g, cx + CELL_W * 0.34, cz + CELL_D * 0.3);
   maple(g, mtX + 3.5, mtZ + 3.0);
-  bambooClump(g, cx - CELL_W * 0.36, cz - CELL_D * 0.05);
-  bambooClump(g, cx + CELL_W * 0.1, cz + CELL_D * 0.38);
+  blossomTree(g, cx + CELL_W * 0.36, cz - CELL_D * 0.05, 0xe6a9c7); // cherry
+  blossomTree(g, cx - CELL_W * 0.3, cz + CELL_D * 0.34, 0xf0e6dc);  // plum
+  weepingWillow(g, cx - 4, cz + CELL_D * 0.3);
+  for (const [bx, bz] of [[-0.36, -0.05], [0.1, 0.38], [-0.42, 0.2], [0.3, -0.36], [0.42, 0.42]])
+    bambooClump(g, cx + bx * CELL_W, cz + bz * CELL_D);
+  // flower clusters along the pond rim + edges
+  for (let i = 0; i < 7; i++) flowerCluster(g, pcx + Math.cos(i * 1.6) * (pr + 1.4), pcz + Math.sin(i * 1.6) * (pr * 0.8 + 1.2));
+  flowerCluster(g, cx - CELL_W * 0.4, cz - CELL_D * 0.35);
+  flowerCluster(g, cx + CELL_W * 0.42, cz - CELL_D * 0.2);
+  // scattered grass tufts on the gravel
+  const grassMat = new THREE.MeshStandardMaterial({ color: 0x6f9b46, roughness: 0.9, flatShading: true, side: THREE.DoubleSide });
+  for (let i = 0; i < 40; i++) {
+    const gx = cx + (Math.random() - 0.5) * CELL_W * 0.8, gz = cz + (Math.random() - 0.5) * CELL_D * 0.8;
+    if (Math.hypot(gx - pcx, gz - pcz) < pr) continue;
+    const tuft = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.4, 4), grassMat);
+    tuft.position.set(gx, 0.2, gz); g.add(tuft);
+  }
 
   // warm garden fill light (sun), no shadows for perf
   const sun = new THREE.DirectionalLight(0xfff3da, 0.5); sun.position.set(cx + 10, 30, cz + 10); g.add(sun);
@@ -119,7 +138,8 @@ function buildBridge(g, world, ax, az, bx, bz) {
       post.position.set(ax + dx * (i + 0.5), y + 0.35, az + dz * (i + 0.5) + sz); g.add(post);
     }
   }
-  world.collide.push({ minX: Math.min(ax, bx) - 0.8, minZ: Math.min(az, bz) - 1, maxX: Math.max(ax, bx) + 0.8, maxZ: Math.max(az, bz) + 1 });
+  // the bridge deck itself is walkable — no collision box here (the water is the
+  // obstacle; see the pond-collision boxes that leave this corridor open).
 }
 
 function buildPavilion(g, world, x, z) {
@@ -165,6 +185,45 @@ function maple(g, x, z) {
   for (let i = 0; i < 5; i++) {
     const blob = new THREE.Mesh(new THREE.IcosahedronGeometry(0.9 + Math.sin(i) * 0.3, 0), FOLIAGE(0xb5532b));
     blob.position.set(x + Math.cos(i * 2) * 1.2, 3.0 + (i % 3) * 0.7, z + Math.sin(i * 2) * 1.2); g.add(blob);
+  }
+}
+function blossomTree(g, x, z, color) {
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.3, 3.2, 8), new THREE.MeshStandardMaterial({ color: 0x5b4634, roughness: 0.9 }));
+  trunk.position.set(x, 1.6, z); g.add(trunk);
+  const mat = new THREE.MeshStandardMaterial({ color: new THREE.Color(color), roughness: 0.92, flatShading: true });
+  for (let i = 0; i < 9; i++) {
+    const a = (i / 9) * Math.PI * 2, r = 1.2 + (i % 3) * 0.4;
+    const blob = new THREE.Mesh(new THREE.IcosahedronGeometry(0.85 + Math.sin(i) * 0.3, 0), mat);
+    blob.position.set(x + Math.cos(a) * r, 3.2 + (i % 4) * 0.55, z + Math.sin(a) * r); g.add(blob);
+  }
+  // a few fallen petals on the ground
+  for (let i = 0; i < 6; i++) {
+    const petal = new THREE.Mesh(new THREE.CircleGeometry(0.12, 5), mat);
+    petal.rotation.x = -Math.PI / 2; petal.position.set(x + (Math.random() - 0.5) * 3, 0.04, z + (Math.random() - 0.5) * 3); g.add(petal);
+  }
+}
+function weepingWillow(g, x, z) {
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.34, 3.6, 8), new THREE.MeshStandardMaterial({ color: 0x5b4634, roughness: 0.9 }));
+  trunk.position.set(x, 1.8, z); g.add(trunk);
+  const mat = new THREE.MeshStandardMaterial({ color: 0x7fa64a, roughness: 0.9, flatShading: true });
+  const crown = new THREE.Mesh(new THREE.SphereGeometry(2.2, 10, 8), mat); crown.position.set(x, 4.2, z); crown.scale.y = 0.7; g.add(crown);
+  // drooping strands
+  for (let i = 0; i < 16; i++) {
+    const a = (i / 16) * Math.PI * 2, r = 1.9 + Math.random() * 0.4;
+    const strand = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.02, 2.4, 4), mat);
+    strand.position.set(x + Math.cos(a) * r, 3.0, z + Math.sin(a) * r); g.add(strand);
+  }
+}
+function flowerCluster(g, x, z) {
+  const colors = [0xd94f5c, 0xe8b13a, 0xe87fae, 0xf0e6cf, 0x9a6fc0, 0xe05a3a];
+  const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.5, 8, 6), new THREE.MeshStandardMaterial({ color: 0x4f7a3f, roughness: 0.9, flatShading: true }));
+  leaf.scale.y = 0.4; leaf.position.set(x, 0.12, z); g.add(leaf);
+  for (let i = 0; i < 10; i++) {
+    const fx = x + (Math.random() - 0.5) * 1.0, fz = z + (Math.random() - 0.5) * 1.0;
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.4, 4), new THREE.MeshStandardMaterial({ color: 0x4f7a3f }));
+    stem.position.set(fx, 0.32, fz); g.add(stem);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 5), new THREE.MeshStandardMaterial({ color: colors[i % colors.length], roughness: 0.7 }));
+    head.position.set(fx, 0.55, fz); g.add(head);
   }
 }
 function bambooClump(g, x, z) {

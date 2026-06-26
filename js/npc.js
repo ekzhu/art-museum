@@ -67,6 +67,7 @@ export function createVisitors(scene, world, perHall = 2) {
     if (room.hall) spawnIn(room, perHall);
     else if (room.isAtrium) spawnIn(room, 3);
     else if (room.isLobby) spawnIn(room, 2);
+    else if (room.isCafe || room.isShop) spawnIn(room, 2);
   }
 
   function pickTarget(npc) {

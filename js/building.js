@@ -28,7 +28,7 @@ const MAP = [
   ['jade', 'sculpture', 'tomb', 'bronze'],
   ['calligraphy', 'atrium', 'ceramics', 'textiles'],
   ['painting', 'lobby', 'decorative', 'theatre'],
-  ['garden', 'portico', null, null],
+  ['garden', 'portico', 'cafe', 'shop'],
 ];
 const ROWS = MAP.length, COLS = MAP[0].length;
 const OFFX = -(COLS * CELL_W) / 2;
@@ -40,6 +40,7 @@ const col = (s) => new THREE.Color(s);
 const flagsFor = (id) => ({
   isAtrium: id === 'atrium', isGarden: id === 'garden', isLobby: id === 'lobby',
   isPortico: id === 'portico', isTheatre: id === 'theatre',
+  isCafe: id === 'cafe', isShop: id === 'shop',
 });
 
 export function buildMuseum(scene) {
@@ -89,7 +90,7 @@ export function buildMuseum(scene) {
       const grand = f.isAtrium || f.isLobby || f.isPortico;
 
       // floor
-      const floorColor = grand ? P.marble : (hall ? hall.palette.floor : (f.isTheatre ? '#26211b' : P.marbleDark));
+      const floorColor = grand ? P.marble : (hall ? hall.palette.floor : (f.isTheatre ? '#26211b' : f.isCafe ? '#cdbfa0' : f.isShop ? '#6a4a30' : P.marbleDark));
       const floorTex = grand
         ? TX.marble(P.marble, P.marbleDark, 2)
         : TX.tiles(floorColor, col(floorColor).offsetHSL(0, 0, -0.08).getStyle(), 3, 3);
@@ -357,8 +358,8 @@ function buildEntrance(root, por, mat, lights, P, columnMat, trimMat, stoneMat, 
   const frontZ = cz + CELL_D / 2;     // portico open edge
   const colMat = columnMat;
 
-  // portico roof beam + colonnade across the open front
-  const nCols = 5;
+  // portico roof beam + colonnade across the open front (even count → clear centre)
+  const nCols = 6;
   for (let i = 0; i < nCols; i++) {
     const x = cx - CELL_W / 2 + 2 + (i * (CELL_W - 4)) / (nCols - 1);
     const c = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.62, WALL_H - 0.3, 18), colMat);
@@ -390,22 +391,90 @@ function buildEntrance(root, por, mat, lights, P, columnMat, trimMat, stoneMat, 
   const plaza = new THREE.Mesh(new THREE.PlaneGeometry(CELL_W + 24, 40), stoneMat);
   plaza.rotation.x = -Math.PI / 2; plaza.position.set(cx, 0.01, frontZ + 1 + steps * stepDepth + 18); root.add(plaza);
 
-  // a pair of guardian lion plinths flanking the steps
+  // a pair of carved guardian lions (石狮) on plinths flanking the steps
   for (const sgn of [-1, 1]) {
     const px = cx + sgn * (CELL_W / 2 - 1), pz = frontZ + 1 + steps * stepDepth + 1.5;
     const plinth = new THREE.Mesh(new THREE.BoxGeometry(2, 1.4, 2), stoneMat); plinth.position.set(px, 0.7, pz); root.add(plinth);
-    const lion = new THREE.Mesh(new THREE.SphereGeometry(0.8, 16, 12), new THREE.MeshStandardMaterial({ color: 0x8d8473, roughness: 0.8, flatShading: true }));
-    lion.scale.set(1, 1.1, 1.3); lion.position.set(px, 1.9, pz); root.add(lion);
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.5, 14, 10), lion.material); head.position.set(px, 2.5, pz + 0.5); root.add(head);
-    addCollide(px - 1.1, pz - 1.1, px + 1.1, pz + 1.1);
+    const moulding = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.22, 2.3), stoneMat); moulding.position.set(px, 1.4, pz); root.add(moulding);
+    const lion = makeGuardianLion(sgn); lion.position.set(px, 1.51, pz); root.add(lion);
+    addCollide(px - 1.2, pz - 1.2, px + 1.2, pz + 1.2);
   }
 
-  // bright entrance sign over the doorway (museum name)
+  // museum-name sign mounted on the entablature, ABOVE the colonnade (clear of columns)
+  const board = new THREE.Mesh(new THREE.BoxGeometry(11, 2.6, 0.4), new THREE.MeshStandardMaterial({ color: 0x3a1410, roughness: 0.6 }));
+  board.position.set(cx, WALL_H + 0.55, frontZ - 0.35); root.add(board);
   const sign = makeSign(`${BUILDING.nameZh}`, '#7c1f17', '#f5e6bf');
-  sign.position.set(cx, WALL_H - 1.6, frontZ - 1.25); root.add(sign);
+  sign.scale.set(1.35, 1.35, 1); sign.position.set(cx, WALL_H + 0.55, frontZ - 0.14); root.add(sign);
 
-  // warm light under the portico
+  // approach landscaping + warm portico light
+  buildLandscaping(root, cx, frontZ, steps * stepDepth, addCollide);
   const l = new THREE.PointLight(0xffe2b0, 0.7, 40, 2); l.position.set(cx, WALL_H - 2, frontZ - 4); root.add(l); lights.push(l);
+}
+
+// A seated stone guardian lion: haunches, mane of curls, snout, paws and a ball.
+function makeGuardianLion(sgn) {
+  const g = new THREE.Group();
+  const stone = new THREE.MeshStandardMaterial({ color: 0x9a9082, roughness: 0.85, flatShading: true });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x4f483f, roughness: 0.9 });
+  const gold = new THREE.MeshStandardMaterial({ color: 0xb8902f, roughness: 0.5, metalness: 0.5 });
+  const add = (geo, mt, x, y, z, sx = 1, sy = 1, sz = 1) => { const m = new THREE.Mesh(geo, mt); m.position.set(x, y, z); m.scale.set(sx, sy, sz); g.add(m); return m; };
+  add(new THREE.SphereGeometry(0.55, 12, 10), stone, 0, 0.55, -0.32, 1, 1.1, 1.2);     // haunches
+  add(new THREE.CylinderGeometry(0.4, 0.52, 1.05, 10), stone, 0, 0.98, 0.12).rotation.x = 0.16; // chest
+  for (const lx of [-0.27, 0.27]) {                                                     // front legs + paws
+    add(new THREE.CylinderGeometry(0.15, 0.17, 0.95, 8), stone, lx, 0.5, 0.5);
+    add(new THREE.SphereGeometry(0.2, 8, 6), stone, lx, 0.12, 0.66, 1, 0.7, 1.3);
+  }
+  for (const lx of [-0.36, 0.36]) add(new THREE.SphereGeometry(0.2, 8, 6), stone, lx, 0.12, -0.5, 1, 0.7, 1.3); // rear paws
+  add(new THREE.SphereGeometry(0.42, 12, 10), stone, 0, 1.55, 0.34);                    // head
+  for (let i = 0; i < 13; i++) { const a = (i / 13) * Math.PI * 2; add(new THREE.SphereGeometry(0.13, 8, 6), stone, Math.cos(a) * 0.46, 1.55 + Math.sin(a) * 0.46, 0.18); } // mane
+  add(new THREE.BoxGeometry(0.3, 0.26, 0.32), stone, 0, 1.49, 0.68);                     // snout
+  add(new THREE.BoxGeometry(0.22, 0.1, 0.14), dark, 0, 1.42, 0.84);                      // mouth
+  for (const ex of [-0.15, 0.15]) add(new THREE.SphereGeometry(0.055, 8, 6), dark, ex, 1.62, 0.64); // eyes
+  for (const ex of [-0.34, 0.34]) add(new THREE.SphereGeometry(0.1, 8, 6), stone, ex, 1.85, 0.28, 0.6, 1, 0.6); // ears
+  add(new THREE.SphereGeometry(0.28, 12, 10), gold, sgn * 0.3, 0.3, 0.72);               // ball under paw
+  add(new THREE.SphereGeometry(0.2, 8, 6), stone, -0.42, 0.95, -0.62);                    // tail
+  return g;
+}
+
+// trees, hedges and flower beds flanking the approach to the portico
+function buildLandscaping(root, cx, frontZ, stepRun, addCollide) {
+  const plazaZ = frontZ + 1 + stepRun;
+  for (const sgn of [-1, 1]) {
+    const ex = cx + sgn * (CELL_W / 2 + 7);
+    flowerTree(root, ex, plazaZ + 6, '#e6a9c7');        // blossoming tree
+    flowerTree(root, ex, plazaZ + 16, '#dfe7c0', true); // willow-ish
+    flowerBed(root, cx + sgn * (CELL_W / 2 - 3), plazaZ + 3.5, 5, 2);
+    // a low clipped hedge running along the approach
+    for (let k = 0; k < 5; k++) {
+      const hz = plazaZ + 6 + k * 2.4;
+      const hedge = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.9, 2.2), new THREE.MeshStandardMaterial({ color: 0x4f7a3f, roughness: 0.9, flatShading: true }));
+      hedge.position.set(cx + sgn * (CELL_W / 2 + 1.5), 0.45, hz); root.add(hedge);
+      addCollide(cx + sgn * (CELL_W / 2 + 1.5) - 0.6, hz - 1.2, cx + sgn * (CELL_W / 2 + 1.5) + 0.6, hz + 1.2);
+    }
+  }
+}
+function flowerTree(root, x, z, blossom, weep = false) {
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.32, 3.4, 8), new THREE.MeshStandardMaterial({ color: 0x5b3a23, roughness: 0.9 }));
+  trunk.position.set(x, 1.7, z); root.add(trunk);
+  const mat = new THREE.MeshStandardMaterial({ color: new THREE.Color(blossom), roughness: 0.9, flatShading: true });
+  for (let i = 0; i < 7; i++) {
+    const blob = new THREE.Mesh(new THREE.IcosahedronGeometry(1.1 + Math.sin(i * 2) * 0.4, 0), mat);
+    const a = (i / 7) * Math.PI * 2;
+    blob.position.set(x + Math.cos(a) * 1.3, (weep ? 3.0 : 3.8) + (i % 3) * 0.7, z + Math.sin(a) * 1.3);
+    root.add(blob);
+  }
+}
+function flowerBed(root, x, z, w, d) {
+  const soil = new THREE.Mesh(new THREE.BoxGeometry(w, 0.3, d), new THREE.MeshStandardMaterial({ color: 0x4a3526, roughness: 1 }));
+  soil.position.set(x, 0.15, z); root.add(soil);
+  const colors = [0xd94f5c, 0xe8b13a, 0xe87fae, 0xf0e6cf, 0x9a6fc0];
+  for (let i = 0; i < 26; i++) {
+    const fx = x + (Math.random() - 0.5) * (w - 0.5), fz = z + (Math.random() - 0.5) * (d - 0.5);
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.35, 4), new THREE.MeshStandardMaterial({ color: 0x4f7a3f }));
+    stem.position.set(fx, 0.42, fz); root.add(stem);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.09, 6, 5), new THREE.MeshStandardMaterial({ color: colors[i % colors.length], roughness: 0.7 }));
+    head.position.set(fx, 0.62, fz); root.add(head);
+  }
 }
 
 function makeSign(text, bg, fg) {

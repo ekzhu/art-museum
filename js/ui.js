@@ -112,6 +112,9 @@ export function createUI(opts) {
     else if (room.isAtrium) { hallName.innerHTML = '中庭　<em>Grand Atrium</em>'; hallSub.textContent = 'Welcome — choose a hall to begin'; }
     else if (room.isGarden) { hallName.innerHTML = '庭园　<em>Scholar’s Garden</em>'; hallSub.textContent = 'A moment of stillness'; }
     else if (room.isLobby) { hallName.innerHTML = '门厅　<em>Entrance Hall</em>'; hallSub.textContent = ''; }
+    else if (room.isPortico) { hallName.innerHTML = '门廊　<em>Portico</em>'; hallSub.textContent = 'Welcome'; }
+    else if (room.isCafe) { hallName.innerHTML = '咖啡　<em>Café</em>'; hallSub.textContent = 'Tea, coffee & sweets'; }
+    else if (room.isShop) { hallName.innerHTML = '礼品店　<em>Museum Shop</em>'; hallSub.textContent = 'Books, prints & replicas'; }
     hallName.classList.remove('flash'); void hallName.offsetWidth; hallName.classList.add('flash');
   }
 

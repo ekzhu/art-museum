@@ -65,18 +65,26 @@ export function placeArtworks(scene, world, artworks) {
       partitions++;
     }
 
-    // build flat ordered slot list
+    // build flat ordered slot list; featured masterpieces take the prime slots
     const slotList = buildSlots(runs);
     const accent = hall.palette.accent;
     const placeholder = new THREE.Color(hall.palette.wall).offsetHSL(0, 0, -0.06);
+    const ordered = [...list.filter((d) => d.featured), ...list.filter((d) => !d.featured)];
 
-    const n = Math.min(list.length, slotList.length);
+    const n = Math.min(ordered.length, slotList.length);
     for (let i = 0; i < n; i++) {
-      const data = list[i];
+      const data = ordered[i];
       const slot = slotList[i];
       const piece = buildPiece(hg, data, slot, { frameWood, frameGilt, lampMat, accent, placeholder, hallId });
       pieces.push(piece);
       pictureMeshes.push(piece.picture);
+      if (data.featured) {
+        // a spotlight pool to highlight the masterpiece (auto-culled with the hall group)
+        const sp = new THREE.SpotLight(0xfff2d8, 2.6, 15, 0.62, 0.5, 1.3);
+        sp.position.set(slot.x + slot.nx * 3.4, ART_Y + 2.8, slot.z + slot.nz * 3.4);
+        sp.target.position.set(slot.x, ART_Y, slot.z);
+        hg.add(sp); hg.add(sp.target);
+      }
     }
     hg.userData.placed = n;
     hg.userData.total = list.length;
@@ -226,12 +234,14 @@ function buildSlots(runs) {
 }
 
 function buildPiece(hg, data, slot, M) {
+  const featured = !!data.featured;
+  const maxH = featured ? 4.2 : MAX_H;   // featured stand out by height, not width (keeps them in-slot)
   const aspect = data.w && data.h ? data.w / data.h : 0.8;
   let w = MAX_W, h = w / aspect;
-  if (h > MAX_H) { h = MAX_H; w = h * aspect; }
-  w = Math.min(w, SLOT - 0.35);
+  if (h > maxH) { h = maxH; w = h * aspect; }
+  w = Math.min(w, SLOT - 0.45);
   h = w / aspect;
-  if (h > MAX_H) { h = MAX_H; w = h * aspect; }
+  if (h > maxH) { h = maxH; w = h * aspect; }
 
   const assembly = new THREE.Group();
   // face the room interior
@@ -240,16 +250,18 @@ function buildPiece(hg, data, slot, M) {
   assembly.rotation.y = angle;
   hg.add(assembly);
 
-  // frame (outer wood + gilt liner)
-  const gilt = M.hallId === 'painting' || M.hallId === 'textiles' || M.hallId === 'calligraphy';
-  const frame = new THREE.Mesh(new THREE.BoxGeometry(w + 0.26, h + 0.26, 0.12), gilt ? M.frameGilt : M.frameWood);
-  frame.position.z = -0.04;
-  assembly.add(frame);
-  if (gilt) {
-    const liner = new THREE.Mesh(new THREE.BoxGeometry(w + 0.1, h + 0.1, 0.14), M.frameWood);
-    liner.position.z = -0.045; assembly.add(liner);
+  if (featured) {
+    // a masterpiece: velvet backing, ornate double-gilt frame, gilded crest
+    const velvet = new THREE.Mesh(new THREE.PlaneGeometry(w + 0.55, h + 0.95), new THREE.MeshStandardMaterial({ color: 0x4e1212, roughness: 0.92 }));
+    velvet.position.z = -0.065; assembly.add(velvet);
+    const outer = new THREE.Mesh(new THREE.BoxGeometry(w + 0.42, h + 0.42, 0.18), M.frameGilt); outer.position.z = -0.05; assembly.add(outer);
+    const inner = new THREE.Mesh(new THREE.BoxGeometry(w + 0.2, h + 0.2, 0.2), M.frameWood); inner.position.z = -0.055; assembly.add(inner);
+    const crest = new THREE.Mesh(new THREE.CylinderGeometry(0.001, 0.36, 0.55, 3), M.frameGilt); crest.position.set(0, h / 2 + 0.5, 0); assembly.add(crest);
   } else {
-    const liner = new THREE.Mesh(new THREE.BoxGeometry(w + 0.12, h + 0.12, 0.14), M.frameGilt);
+    const gilt = M.hallId === 'painting' || M.hallId === 'textiles' || M.hallId === 'calligraphy';
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(w + 0.26, h + 0.26, 0.12), gilt ? M.frameGilt : M.frameWood);
+    frame.position.z = -0.04; assembly.add(frame);
+    const liner = new THREE.Mesh(new THREE.BoxGeometry(w + (gilt ? 0.1 : 0.12), h + (gilt ? 0.1 : 0.12), 0.14), gilt ? M.frameWood : M.frameGilt);
     liner.position.z = -0.045; assembly.add(liner);
   }
 
@@ -288,16 +300,22 @@ function drawPlaque(piece) {
   const c = document.createElement('canvas');
   c.width = 512; c.height = 170;
   const x = c.getContext('2d');
-  x.fillStyle = '#efe6d2'; x.fillRect(0, 0, 512, 170);
-  x.fillStyle = '#b89a3f'; x.fillRect(0, 0, 512, 6);
   const d = piece.data;
+  x.fillStyle = '#efe6d2'; x.fillRect(0, 0, 512, 170);
+  x.fillStyle = d.featured ? '#caa64a' : '#b89a3f'; x.fillRect(0, 0, 512, d.featured ? 10 : 6);
+  if (d.featured) {
+    x.fillStyle = '#7c1f17'; x.fillRect(0, 10, 512, 30);
+    x.fillStyle = '#f0e6cf'; x.font = 'bold 22px "KaiTi",Georgia,serif'; x.textAlign = 'center';
+    x.fillText('名作  ·  MASTERPIECE', 256, 32); x.textAlign = 'left';
+  }
+  const top = d.featured ? 78 : 46;
   x.fillStyle = '#2a2118';
   x.font = 'bold 30px Georgia, serif';
-  wrap(x, d.title || 'Untitled', 18, 46, 478, 32, 2);
+  wrap(x, d.title || 'Untitled', 18, top, 478, 32, 2);
   x.fillStyle = '#5a4a30';
   x.font = 'italic 24px Georgia, serif';
-  const line2 = [d.creator && d.creator !== 'Unknown' ? d.creator : null, d.period ? d.period : null].filter(Boolean).join(' · ');
-  x.fillText(clip(line2 || (d.type || ''), 40), 18, 150);
+  const line2 = [d.creator && d.creator !== 'Unknown' ? d.creator : null, d.period ? d.period : null, d.collection ? d.collection : null].filter(Boolean).join(' · ');
+  x.fillText(clip(line2 || (d.type || ''), 52), 18, 156);
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = 4;

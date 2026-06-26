@@ -639,7 +639,7 @@ function curationScore(r, hasCreator, period, strongArt, title, collection) {
 // 'painting' but actually returns every kind of Chinese-origin object).
 const HALL_KW = [
   ['ceramics', /porcelain|ceramic|stoneware|pottery|celadon|sancai|\bvase\b|\bbowl\b|\bdish\b|\bjar\b|ewer|\bcup\b|\bplate\b|\bguan\b|ru ware|kiln|famille|\bware\b/],
-  ['bronze', /bronze|ritual vessel|\bding\b|\bgui\b|\bzun\b|\byou\b|\bjue\b|\bgu\b|\bhu\b|\bbell\b|mirror|taotie|\bge\b|\byan\b|\bhe\b/],
+  ['bronze', /bronze|ritual vessel|\bding\b|\bgui\b|\bzun\b|\bjue\b|\bbell\b|\bmirror\b|taotie|monster.?mask/],
   ['jade', /\bjade\b|nephrite|jadeite|\bcong\b|bi disc|jadework/],
   ['sculpture', /buddha|bodhisattva|guanyin|maitreya|\bstele\b|statue|sculptur|grotto|\bcave\b|votive|luohan|arhat|figure of a/],
   ['tomb', /terracotta|tomb figure|mingqi|\bwarrior\b|tomb guardian|bingmayong|burial|funerary/],
@@ -709,10 +709,13 @@ function finalize(rawArr) {
     const strongArt = STRONG_ART.test(blob);
     if (!r.wikidata && !collection && !period && !strongArt) continue;
 
-    // Hall assignment, with catch-all de-pollution.
+    // Hall assignment, with catch-all de-pollution. Reclassify only on object-
+    // type fields (not the free-text title/description, which match incidental
+    // words like "jar" or "he" and wrongly move real paintings).
     let hall = pickHall(r);
     if (hall === 'painting') {
-      const kw = reclassify(blob);
+      const typeBlob = (r.types.join(' ') + ' ' + r.objectName + ' ' + r.sourceCats.join(' ') + ' ' + r.materials.join(' ') + ' ' + r.genres.join(' ')).toLowerCase();
+      const kw = /paint|scroll|album leaf|ink|calligraph/.test(typeBlob) ? 'painting' : reclassify(typeBlob);
       if (kw && kw !== 'painting') hall = kw;
       else if (!kw) {
         // No type signal: keep in painting only if it plausibly is one.
@@ -756,7 +759,11 @@ function finalize(rawArr) {
   const byHall = {};
   for (const a of deduped) (byHall[a.hall] ??= []).push(a);
   const capped = [];
-  for (const h in byHall) capped.push(...byHall[h].sort((a, b) => b._q - a._q).slice(0, HALL_CAP[h] ?? 200));
+  for (const h in byHall) {
+    const arr = byHall[h].sort((a, b) => b._q - a._q).slice(0, HALL_CAP[h] ?? 200);
+    arr.slice(0, 2).forEach((a) => { a.featured = true; });   // the two finest of each hall
+    capped.push(...arr);
+  }
 
   capped.forEach((a) => delete a._q);
   capped.sort((a, b) => {
