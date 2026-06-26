@@ -13,9 +13,13 @@ metadata are sourced from **Wikimedia Commons** and **Wikidata**.
 
 ## What it is
 
-Step into a skylit central atrium and wander, in first person, through **nine
-themed exhibition halls** plus a scholar's-garden courtyard. Each hall has its
-own palette, lighting, ornament and chronological wall of works:
+Arrive on the plaza, climb the steps through a columned **portico** (sweeping
+tiled roof, gilded signboard, guardian lions), cross the **grand lobby**
+(reception desk, velvet rope) into a skylit central **atrium**, and wander, in
+first person, through **nine themed exhibition halls**, a **documentary
+theatre**, and a **scholar's-garden courtyard**. Low-poly **visitors** stroll
+the galleries and pause to view the art. Each hall has its own palette,
+lighting, dimensional mouldings, ornament and chronological wall of works:
 
 | 馆 Hall | Theme |
 |---|---|
@@ -31,7 +35,15 @@ own palette, lighting, ornament and chronological wall of works:
 
 Walk up to any piece and press **E** (or click) to see a high-resolution image
 and full catalogue details — title, artist, dynasty, medium, collection,
-description and a link to its Wikimedia source.
+description and a link to its Wikimedia source. In the theatre, press **E** at
+the screen to watch curated, embeddable documentaries (Terracotta Army, the
+Forbidden City, Dunhuang, bronzes, porcelain, jade) in an in-app player.
+
+The collection is **curated**, not dumped: a denylist + provenance gate removes
+stray photos, and quality-weighted scoring keeps the best of each hall, drawing
+on museum collections (the Met, British Museum, Cleveland) — so you'll find real
+masterpieces like Han Gan's *Night-Shining White* and Huang Tingjian's
+calligraphy rather than tourist snapshots.
 
 ## Controls
 
@@ -83,13 +95,17 @@ dependency). Module map:
 | Module | Role |
 |---|---|
 | `curation.js` | Hall themes: bilingual names, palettes, lighting, motifs, intros |
-| `building.js` | Procedural architecture from a grid floor-plan: walls, doorways, columns, the atrium's caisson skylight, collision map |
-| `decor.js` | Ornament: palace lanterns, name-banners, lattice screens, vitrines with lathed vases, the garden's rockery & pond |
+| `building.js` | Procedural architecture from a grid floor-plan: the portico/plaza/steps, grand lobby, halls, theatre, walls, ornate doorways, dimensional mouldings, columns, the atrium's caisson skylight, sky dome, collision map |
+| `decor.js` | Ornament: palace lanterns, name-banners, lattice screens, vitrines with lathed vases, lobby reception |
+| `garden.js` | Scholar's garden: faux Taihu-rock mountain, reflecting pond, moon-bridge, pavilion, moon gate, lantern, plantings |
+| `theatre.js` | Documentary screening room: glowing screen, seating, posters, the embeddable film program |
+| `furniture.js` | Benches, reception desk, rope stanchions, sign panels (with collision) |
+| `npc.js` | Wandering low-poly visitors that stroll, pause and view the art |
 | `textures.js` | Procedural canvas textures (marble, wood, lattice, key-fret, motifs) — no external image assets |
-| `artworks.js` | Lays out every piece on walls/partitions; streams textures with an LRU memory cap |
+| `artworks.js` | Lays out every piece on walls/partitions; frustum-prioritised texture streaming with an LRU memory cap |
 | `player.js` | Pointer-lock mouselook + WASD with wall-sliding collision |
-| `ui.js` | Start screen, HUD, the detail panel and hall directory |
-| `main.js` | Bootstrap, render loop, per-hall visibility culling |
+| `ui.js` | Start screen, HUD, the detail panel, hall directory and cinema modal |
+| `main.js` | Bootstrap, render loop, per-hall visibility + light culling, interaction |
 
 **Performance.** Artwork images are unlit (`MeshBasicMaterial`) for perfect
 colour at zero lighting cost; only the player's current hall and its neighbours
