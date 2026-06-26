@@ -1,0 +1,29 @@
+{
+  "total": 1700,
+  "hallCounts": {
+    "bronze": 170,
+    "calligraphy": 130,
+    "ceramics": 230,
+    "decorative": 210,
+    "jade": 140,
+    "painting": 280,
+    "sculpture": 220,
+    "textiles": 150,
+    "tomb": 170
+  },
+  "periodCounts": {
+    "Neolithic": 63,
+    "Shang & Western Zhou": 103,
+    "Eastern Zhou": 34,
+    "Qin": 104,
+    "Han": 28,
+    "Six Dynasties": 13,
+    "Sui & Tang": 181,
+    "Five Dynasties": 2,
+    "Song": 203,
+    "Yuan": 61,
+    "Ming": 202,
+    "Qing": 389,
+    "Modern": 110
+  }
+}

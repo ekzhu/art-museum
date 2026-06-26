@@ -1,0 +1,11 @@
+{
+  "name": "chinese-art-museum",
+  "version": "1.0.0",
+  "description": "A 3D virtual museum of historical Chinese art, built with Three.js, sourced from Wikimedia.",
+  "type": "module",
+  "scripts": {
+    "fetch-data": "node scripts/fetch-data.mjs",
+    "serve": "python3 -m http.server 8000"
+  },
+  "license": "MIT"
+}

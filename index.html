@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Museum of Chinese Art · 中华艺术博物馆</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%237c1f17'/%3E%3Ctext x='16' y='23' font-size='20' text-anchor='middle' fill='%23caa64a' font-family='serif'%3E艺%3C/text%3E%3C/svg%3E" />
+  <meta name="description" content="A 3D virtual museum of historical Chinese art — walk through themed halls of painting, calligraphy, ceramics, bronze, jade, sculpture, tomb figures, silk and decorative arts. Built with three.js; artworks from Wikimedia." />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="preconnect" href="https://upload.wikimedia.org" crossorigin />
+  <link rel="preconnect" href="https://commons.wikimedia.org" />
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./js/vendor/three.module.js",
+      "three/addons/": "./js/vendor/addons/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <canvas id="scene"></canvas>
+  <div id="boot-splash">
+    <div class="boot-zh">中华艺术博物馆</div>
+    <div class="boot-en">Museum of Chinese Art</div>
+    <div class="boot-dots">Loading…</div>
+  </div>
+  <noscript style="color:#eee;font-family:sans-serif;position:absolute;top:40%;width:100%;text-align:center">
+    This experience requires JavaScript and WebGL.
+  </noscript>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
