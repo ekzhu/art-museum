@@ -293,10 +293,12 @@ function buildPiece(hg, data, slot, M) {
   lamp.position.set(0, h / 2 + 0.4, 0.22);
   assembly.add(lamp);
 
-  // label plaque (text drawn lazily when the piece's image streams in)
+  // label plaque (text drawn lazily when the piece's image streams in).
+  // Sit it well proud of the wall (z 0.16) so it never lies coplanar with the
+  // wainscot/baseboard mouldings — that coplanarity was the source of the flicker.
   const plaqueMat = new THREE.MeshBasicMaterial({ color: 0xcfc3a3, toneMapped: false });
   const plaque = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.5), plaqueMat);
-  plaque.position.set(0, -h / 2 - 0.5, 0.02);
+  plaque.position.set(0, -h / 2 - 0.5, 0.16);
   assembly.add(plaque);
 
   const piece = {
@@ -371,7 +373,7 @@ function buildPedestalPiece(hg, world, data, pos, M) {
   // label on the plinth front
   const plaqueMat = new THREE.MeshBasicMaterial({ color: 0xcfc3a3, toneMapped: false });
   const plaque = new THREE.Mesh(new THREE.PlaneGeometry(1.04, 0.36), plaqueMat);
-  plaque.position.set(0, PED_H * 0.6, 0.61); grp.add(plaque);
+  plaque.position.set(0, PED_H * 0.6, 0.64); grp.add(plaque);   // proud of the plinth front (z 0.6) — no z-fight
 
   const sn = Math.sin(angle), cs = Math.cos(angle);
   const piece = {
