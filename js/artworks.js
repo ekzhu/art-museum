@@ -17,6 +17,8 @@ import { WALL_H, CELL_W, CELL_D, T } from './building.js';
 const SLOT = 4.0;           // horizontal pitch between pieces (generous museum spacing)
 const ART_Y = 2.85;         // vertical centre of a hung piece
 const MAX_W = 3.3, MAX_H = 3.5;
+const PED_H = 1.3;          // plinth height for free-standing object cases
+const PED_OBJ_MAXW = 1.5, PED_OBJ_MAXH = 1.7;
 const MAX_PARTITIONS = 3;
 const LOAD_RADIUS = 46;     // metres: stream textures within this of player (covers a hall seen from its doorway)
 const MAX_TEXTURES = 140;   // LRU cap on simultaneously-loaded wall textures (500px ≈ 1.6MB each)
@@ -53,23 +55,38 @@ export function placeArtworks(scene, world, artworks) {
     group.add(hg);
     hallGroups[hallId] = hg;
 
+    const accent = hall.palette.accent;
+    const placeholder = new THREE.Color(hall.palette.wall).offsetHSL(0, 0, -0.06);
+    // featured masterpieces first (prime cases / prime wall slots)
+    let ordered = [...list.filter((d) => d.featured), ...list.filter((d) => !d.featured)];
+
+    // Object halls (工艺 / 陶瓷 / 青铜 / 玉 / 陶俑 / 佛造像): present the finest pieces
+    // as free-standing exhibits — the object photograph stood upright on a plinth
+    // inside a glass case — so the room reads as objects in the round, not a wall
+    // of photos. (True single-photo 3-D reconstruction isn't possible, so this is
+    // the museum-standard "object on a plinth under glass" presentation.)
+    if (hall.display === 'pedestal' || hall.display === 'mixed') {
+      const spots = findPedestalSpots(world, room, 8);
+      const k = Math.min(spots.length, ordered.length);
+      for (let i = 0; i < k; i++) {
+        const piece = buildPedestalPiece(hg, world, ordered[i], spots[i], { wainscot: hall.palette.wainscot, accent, placeholder, hallId });
+        pieces.push(piece);
+      }
+      ordered = ordered.slice(k);
+    }
+
     // gather runs: perimeter (from building) + added partitions until capacity
     let runs = (world.hallRuns[hallId] || []).slice();
     let slots = countSlots(runs);
     let partitions = 0;
-    while (slots < list.length && partitions < MAX_PARTITIONS) {
+    while (slots < ordered.length && partitions < MAX_PARTITIONS) {
       const pr = addPartition(hg, world, room, partitions, hall);
       runs.push(...pr.runs);
       pr.collide.forEach((b) => world.collide.push(b));
       slots = countSlots(runs);
       partitions++;
     }
-
-    // build flat ordered slot list; featured masterpieces take the prime slots
     const slotList = buildSlots(runs);
-    const accent = hall.palette.accent;
-    const placeholder = new THREE.Color(hall.palette.wall).offsetHSL(0, 0, -0.06);
-    const ordered = [...list.filter((d) => d.featured), ...list.filter((d) => !d.featured)];
 
     const n = Math.min(ordered.length, slotList.length);
     for (let i = 0; i < n; i++) {
@@ -77,7 +94,6 @@ export function placeArtworks(scene, world, artworks) {
       const slot = slotList[i];
       const piece = buildPiece(hg, data, slot, { frameWood, frameGilt, lampMat, accent, placeholder, hallId });
       pieces.push(piece);
-      pictureMeshes.push(piece.picture);
       if (data.featured) {
         // a spotlight pool to highlight the masterpiece (auto-culled with the hall group)
         const sp = new THREE.SpotLight(0xfff2d8, 2.6, 15, 0.62, 0.5, 1.3);
@@ -292,6 +308,81 @@ function buildPiece(hg, data, slot, M) {
     tex: null, queued: false, failed: false, lastSeen: 0, plaqueDrawn: false,
   };
   picture.userData.piece = piece;
+  return piece;
+}
+
+// ----- free-standing object case (plinth + glass + upright photo standee) -----
+// Finds collision-free spots that line the two side aisles of an object hall,
+// clear of the central doorway cross and the central partitions (which only ever
+// span |x-cx| ≤ ~10.5, so x = cx ± 11.8 is always safe).
+function clearSpot(collide, x, z, r) {
+  for (const b of collide) if (x > b.minX - r && x < b.maxX + r && z > b.minZ - r && z < b.maxZ + r) return false;
+  return true;
+}
+function findPedestalSpots(world, room, max) {
+  const { cx, cz } = room;
+  const out = [];
+  // Two rows of cases in the hall's open END zones — clear of the central
+  // partitions (which only span |z-cz| ≲ 5) and of the N/S doorway lane (x≈cx).
+  for (const gz of [-9.6, 9.6]) {
+    for (const gx of [-11, -6, 6, 11]) {
+      const x = cx + gx, z = cz + gz;
+      if (!clearSpot(world.collide, x, z, 1.0)) continue;
+      out.push({ x, z, nx: 0, nz: gz < 0 ? 1 : -1 });   // face the room centre
+    }
+  }
+  return out.slice(0, max);
+}
+
+function buildPedestalPiece(hg, world, data, pos, M) {
+  const { x, z, nx, nz } = pos;
+  const angle = Math.atan2(nx, nz);
+  const grp = new THREE.Group();
+  grp.position.set(x, 0, z); grp.rotation.y = angle; hg.add(grp);
+
+  const plinthMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(M.wainscot), roughness: 0.6 });
+  const metalMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(M.accent), metalness: 0.45, roughness: 0.4 });
+  // plinth + base trim + accent cap
+  const plinth = new THREE.Mesh(new THREE.BoxGeometry(1.2, PED_H, 1.2), plinthMat); plinth.position.y = PED_H / 2; grp.add(plinth);
+  const baseTrim = new THREE.Mesh(new THREE.BoxGeometry(1.36, 0.18, 1.36), plinthMat); baseTrim.position.y = 0.09; grp.add(baseTrim);
+  const cap = new THREE.Mesh(new THREE.BoxGeometry(1.32, 0.1, 1.32), metalMat); cap.position.y = PED_H + 0.05; grp.add(cap);
+
+  // the object: its photograph stood upright on a small easel base
+  const aspect = data.w && data.h ? data.w / data.h : 0.8;
+  let w = PED_OBJ_MAXW, h = w / aspect;
+  if (h > PED_OBJ_MAXH) { h = PED_OBJ_MAXH; w = h * aspect; }
+  const objY = PED_H + 0.18 + h / 2;
+  const standBase = new THREE.Mesh(new THREE.BoxGeometry(Math.min(w * 0.9, 1.0), 0.08, 0.46), metalMat); standBase.position.set(0, PED_H + 0.14, 0); grp.add(standBase);
+  const strut = new THREE.Mesh(new THREE.BoxGeometry(0.06, h * 0.85, 0.05), plinthMat); strut.position.set(0, objY, -0.05); strut.rotation.x = -0.1; grp.add(strut);
+  const picMat = new THREE.MeshBasicMaterial({ color: M.placeholder, toneMapped: false });
+  const picture = new THREE.Mesh(new THREE.PlaneGeometry(w, h), picMat);
+  picture.position.set(0, objY, 0.045); grp.add(picture);
+
+  // glass case (vitrine) with slender metal edges
+  const glassH = h + 0.55, glassY = PED_H + 0.1 + glassH / 2;
+  const glass = new THREE.Mesh(new THREE.BoxGeometry(1.2, glassH, 1.2),
+    new THREE.MeshStandardMaterial({ color: 0xcfe6ea, transparent: true, opacity: 0.09, roughness: 0.05, metalness: 0, depthWrite: false }));
+  glass.position.y = glassY; grp.add(glass);
+  for (const [ex, ez] of [[-0.6, -0.6], [0.6, -0.6], [-0.6, 0.6], [0.6, 0.6]]) {
+    const e = new THREE.Mesh(new THREE.BoxGeometry(0.05, glassH, 0.05), metalMat); e.position.set(ex, glassY, ez); grp.add(e);
+  }
+  const topFrame = new THREE.Mesh(new THREE.BoxGeometry(1.26, 0.07, 1.26), metalMat); topFrame.position.y = PED_H + 0.1 + glassH; grp.add(topFrame);
+
+  // label on the plinth front
+  const plaqueMat = new THREE.MeshBasicMaterial({ color: 0xcfc3a3, toneMapped: false });
+  const plaque = new THREE.Mesh(new THREE.PlaneGeometry(1.04, 0.36), plaqueMat);
+  plaque.position.set(0, PED_H * 0.6, 0.61); grp.add(plaque);
+
+  const sn = Math.sin(angle), cs = Math.cos(angle);
+  const piece = {
+    data, hallId: M.hallId, picture, plaque, plaqueMat,
+    center: new THREE.Vector3(x + sn * 0.05, objY, z + cs * 0.05),
+    normalDir: { x: nx, z: nz },
+    placeholderColor: new THREE.Color(M.placeholder),
+    tex: null, queued: false, failed: false, lastSeen: 0, plaqueDrawn: false,
+  };
+  picture.userData.piece = piece;
+  world.collide.push({ minX: x - 0.72, minZ: z - 0.72, maxX: x + 0.72, maxZ: z + 0.72 });
   return piece;
 }
 

@@ -1,8 +1,9 @@
 /**
  * decor.js — interior ornament that gives each hall its character:
- * glowing palace lanterns, hanging name-banners, lattice screens, corner
- * vitrines with procedurally-turned vases (for object halls), planters, and a
- * scholar's-garden courtyard with rockery and a still pond. Lanterns and the
+ * glowing palace lanterns, hanging name-banners, lattice screens, planters, and
+ * a scholar's-garden courtyard with rockery and a still pond. (Object halls get
+ * free-standing glass display cases — built in artworks.js, where the image
+ * streaming lives.) Lanterns and the
  * skylight read as light through emissive materials, so the scene stays cheap.
  */
 import * as THREE from 'three';
@@ -85,29 +86,6 @@ function banner(parent, x, y, z, ry, hall) {
   pole.rotation.z = Math.PI / 2; pole.position.set(x, y + 1.75, z); pole.rotation.y = ry; parent.add(pole);
 }
 
-function vase(color = 0x2552a0, h = 1.0) {
-  const pts = [];
-  const prof = [[0.0, 0], [0.18, 0.0], [0.26, 0.12], [0.34, 0.34], [0.28, 0.6], [0.16, 0.82], [0.2, 0.95], [0.14, 1.0]];
-  for (const [r, y] of prof) pts.push(new THREE.Vector2(r * h * 1.0, y * h));
-  const geo = new THREE.LatheGeometry(pts, 24);
-  return new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color, roughness: 0.3, metalness: 0.1 }));
-}
-
-function vitrine(parent, x, z, hall) {
-  const grp = new THREE.Group();
-  const plinth = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.0, 1.1), new THREE.MeshStandardMaterial({ color: 0x2a211a, roughness: 0.6 }));
-  plinth.position.y = 0.5; grp.add(plinth);
-  const top = new THREE.Mesh(new THREE.BoxGeometry(1.16, 0.08, 1.16), new THREE.MeshStandardMaterial({ color: new THREE.Color(hall.palette.accent), metalness: 0.4, roughness: 0.4 }));
-  top.position.y = 1.02; grp.add(top);
-  // object
-  const obj = vase(new THREE.Color(hall.palette.accent).getHex(), 0.9);
-  obj.position.y = 1.06; grp.add(obj);
-  // glass case
-  const glass = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.3, 1.0), new THREE.MeshStandardMaterial({ color: 0xbfe0e6, transparent: true, opacity: 0.12, roughness: 0.05, metalness: 0 }));
-  glass.position.y = 1.75; grp.add(glass);
-  grp.position.set(x, 0, z); parent.add(grp);
-}
-
 function latticeScreen(parent, x, y, z, ry, w = 2.4, h = 3.2, accent = '#caa64a') {
   const tex = TX.lattice(accent, 'rgba(60,40,25,0.0)');
   const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: tex, transparent: true, alphaTest: 0.2, side: THREE.DoubleSide, roughness: 0.7 }));
@@ -130,13 +108,10 @@ function decorHall(g, room, world) {
   // a gallery bench, clear of the central partitions and the doorways
   placeBench(g, world, cx - CELL_W * 0.24, cz + CELL_D * 0.3, 0, 3.2);
   placeBench(g, world, cx + CELL_W * 0.24, cz - CELL_D * 0.3, 0, 3.2);
-  // corner vitrines for object halls
-  if (hall.display === 'pedestal' || hall.display === 'mixed') {
-    const dx = CELL_W * 0.36, dz = CELL_D * 0.36;
-    vitrine(g, cx - dx, cz - dz, hall);
-    vitrine(g, cx + dx, cz - dz, hall);
-    if (hall.display === 'pedestal') { vitrine(g, cx - dx, cz + dz, hall); vitrine(g, cx + dx, cz + dz, hall); }
-  } else {
+  // Object halls now get free-standing glass cases holding the actual exhibits
+  // (built in artworks.js, where the image streaming + interaction live).
+  // Wall-display halls get a decorative lattice screen in a corner instead.
+  if (hall.display === 'wall') {
     latticeScreen(g, cx - CELL_W * 0.38, 2.4, cz - CELL_D * 0.3, Math.PI / 2, 2.4, 3.6, hall.palette.accent);
   }
 }
