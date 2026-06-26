@@ -551,6 +551,42 @@ function toRoman(n) {
   return s;
 }
 
+// A normalised "object key" used to collapse near-identical pieces — the SAME
+// object photographed several times (… 01/02/03, … detail/reverse, … 1 of 2,
+// "(commons-id)"). Commons filenames are globally unique, so a shared base after
+// stripping sequence/descriptor tails means it is genuinely the same object.
+function dupBase(file) {
+  let s = (file || '').toLowerCase()
+    .replace(/\.(jpe?g|png|tiff?|gif|svg|webp)$/i, '')
+    .replace(/[（(][^)）]*\d[^)）]*[)）]/g, ' ')        // (33679304095), photo ids
+    .replace(/\bmet\s+dp\d+[a-z]?\b/gi, ' ')           // MET DP15348 accession
+    .replace(/\bdp\d{3,}[a-z]?\b/gi, ' ')
+    .replace(/\b\d{1,2}\s+of\s+\d{1,2}\b/gi, ' ');     // "1 of 2"
+  const TAIL = /[\s,_\-]+(\d{1,3}|[ivx]{1,4}|detail|details|reverse|obverse|verso|recto|side|sides|back|front|top|bottom|view|views|closeup|close[\s-]?up|interior|exterior|open|closed|whole|overall|full|left|right|[a-z])\s*$/i;
+  let prev;
+  do { prev = s; s = s.replace(TAIL, ' ').trim(); } while (s !== prev && s.length > 4);
+  return s.replace(/[^a-z0-9一-鿿]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+// Venue / photo-shoot batch prefixes are NOT object names: several *different*
+// objects shot in one museum visit share a base like "shanxi museum 2009". Never
+// collapse those — only collapse bases that read as an object designation.
+const VENUE_BASE = /\b(museum|gallery|bowuguan|bowuyuan|collection|exhibition|institute|rijksmuseum|nationaal|hall|grottoes?|caves?)\b|\b(18|19|20)\d{2}\b/;
+function groupableBase(b) { return b.length >= 5 && !VENUE_BASE.test(b); }
+// Keep at most this many images of any one repeated object.
+const DUP_KEEP = 2;
+// Many distinct objects carry the SAME generic / collection-name title (e.g. 32
+// pieces all called "Percival David Collection"). Even when the photos differ,
+// a wall of identically-named items reads as duplicates — so limit how many of
+// each displayed-title stem a hall may show.
+const TITLE_KEEP = 3;
+function titleStem(t) {
+  return (t || '').toLowerCase()
+    .replace(/\s*·\s*[ivx]+$/, '')
+    .replace(/,\s*[a-z &]+ period$/, '')
+    .replace(/[\s,;:·\-–—]+$/, '')
+    .trim();
+}
+
 function singular(w) { return /ss$/.test(w) ? w : w.replace(/s$/, ''); }
 
 function niceType(r) {
@@ -682,7 +718,7 @@ function deriveCollection(r) {
 // High-confidence NON-artwork signals (modern photos, activities, places, people,
 // commerce, transport, tools/process). Terms here essentially never title a real
 // historical artwork, so a match is a hard reject.
-const DENY = /\b(boeing|airbus|airline|aircraft|airport|aviation|locomotive|railway|railroad|\bsubway\b|metro station|automobile|motorcycle|\bhighway\b|skyscraper|stadium|\bhotel\b|restaurant|\bcafe\b|supermarket|\bmall\b|cityscape|skyline|downtown|\bfactory\b|\bairfield\b|\bschool\b|classroom|university campus|\blesson\b|\bclass\b|\bworkshop\b|demonstration|\brehearsal\b|performance|performing|competition|\bfestival\b|\bparade\b|\bceremony\b|\bwedding\b|conference|delegation|\btourist\b|tourism|\bselfie\b|cosplay|reenact|\bprotest\b|\brally\b|\bpresident\b|\bminister\b|politician|\belection\b|advertis|billboard|\blogo\b|\bpassport\b|banknote|postage|infographic|floor plan|former residence|\bsignboard\b|\bstorefront\b|\bshop\b|\bstore\b|writing brush|calligraphy brush|inkstick making|making of|\bhow to\b|\btutorial\b|\bmuseum exterior\b|\bstreet\b|\bmarket\b)\b|總統|合影|留念|总统|議員|纪念|紀念/i;
+const DENY = /\b(boeing|airbus|airline|aircraft|airport|aviation|locomotive|railway|railroad|\bsubway\b|metro station|automobile|motorcycle|\bhighway\b|skyscraper|stadium|\bhotel\b|restaurant|\bcafe\b|supermarket|\bmall\b|cityscape|skyline|downtown|\bfactory\b|\bairfield\b|\bschool\b|classroom|university campus|\blesson\b|\bclass\b|\bworkshop\b|demonstration|\brehearsal\b|performance|performing|competition|\bfestival\b|\bparade\b|\bceremony\b|\bwedding\b|conference|delegation|\btourist\b|tourism|\bselfie\b|cosplay|reenact|\bprotest\b|\brally\b|\bpresident\b|\bminister\b|politician|\belection\b|advertis|billboard|\blogo\b|\bpassport\b|banknote|postage|infographic|floor plan|former residence|\bsignboard\b|\bstorefront\b|\bshop\b|\bstore\b|writing brush|calligraphy brush|inkstick making|making of|\bhow to\b|\btutorial\b|\bmuseum exterior\b|\bstreet\b|\bmarket\b|evening dress|cocktail dress|ball gown|wedding dress|haute couture|eugenie et juliette|christie'?s|sotheby'?s|bonhams|\bauction\b|auctioneer|hkcec|convention centre|convention center)\b|總統|合影|留念|总统|議員|纪念|紀念|拍賣|拍卖|佳士得|蘇富比/i;
 
 // Positive artwork-type signal (object kinds we actually exhibit).
 const STRONG_ART = /\b(painting|scroll|album leaf|calligraph|porcelain|celadon|stoneware|pottery|ceramic|vase|bowl|\bjar\b|\bdish\b|\bcup\b|ewer|\bware\b|sancai|bronze|ritual|\bding\b|\bgui\b|\bzun\b|mirror|\bbell\b|\bjade\b|\bcong\b|lacquer|cloisonn|enamel|snuff|\bfan\b|inkstone|furniture|\bchair\b|\btable\b|cabinet|\bscreen\b|embroider|\bsilk\b|kesi|tapestry|brocade|\brobe\b|buddha|bodhisattva|guanyin|\bstele\b|statue|sculptur|relief|terracotta|tomb figure|mingqi|figurine|vessel|incense|teapot|\bseal\b|carving|hanging scroll|handscroll)\b/i;
@@ -753,14 +789,40 @@ function finalize(rawArr) {
 
   // De-dupe by image URL.
   const seen = new Set();
-  const deduped = out.filter((a) => (seen.has(a.full) ? false : (seen.add(a.full), true)));
+  const urlUniq = out.filter((a) => (seen.has(a.full) ? false : (seen.add(a.full), true)));
+
+  // Collapse near-identical pieces — the same object photographed several times.
+  // Keep only the best DUP_KEEP images of each object so a wall isn't filled with
+  // nine views of one snuff bottle. Ungroupable (venue-batch / generic) bases pass
+  // through untouched so genuinely distinct objects are never merged.
+  const byBase = new Map();
+  const deduped = [];
+  for (const a of [...urlUniq].sort((x, y) => y._q - x._q)) {
+    const b = dupBase(a.file);
+    if (!groupableBase(b)) { deduped.push(a); continue; }
+    const key = a.hall + '|' + b;
+    const n = byBase.get(key) || 0;
+    if (n >= DUP_KEEP) continue;       // already kept the best DUP_KEEP of this object
+    byBase.set(key, n + 1);
+    deduped.push(a);
+  }
 
   // Per-hall cap, keeping highest-quality items.
   const byHall = {};
   for (const a of deduped) (byHall[a.hall] ??= []).push(a);
   const capped = [];
   for (const h in byHall) {
-    const arr = byHall[h].sort((a, b) => b._q - a._q).slice(0, HALL_CAP[h] ?? 200);
+    const cap = HALL_CAP[h] ?? 200;
+    const stemCount = new Map();
+    const arr = [];
+    for (const a of byHall[h].sort((x, y) => y._q - x._q)) {  // best first
+      if (arr.length >= cap) break;
+      const st = titleStem(a.title);
+      const n = stemCount.get(st) || 0;
+      if (st && n >= TITLE_KEEP) continue;                   // hall already has enough of this name
+      stemCount.set(st, n + 1);
+      arr.push(a);
+    }
     arr.slice(0, 2).forEach((a) => { a.featured = true; });   // the two finest of each hall
     capped.push(...arr);
   }

@@ -12,18 +12,18 @@
     "tomb": 110
   },
   "periodCounts": {
-    "Neolithic": 33,
-    "Shang & Western Zhou": 75,
-    "Eastern Zhou": 33,
-    "Qin": 72,
-    "Han": 23,
-    "Six Dynasties": 9,
-    "Sui & Tang": 116,
+    "Neolithic": 40,
+    "Shang & Western Zhou": 70,
+    "Eastern Zhou": 35,
+    "Qin": 19,
+    "Han": 30,
+    "Six Dynasties": 16,
+    "Sui & Tang": 185,
     "Five Dynasties": 1,
-    "Song": 100,
-    "Yuan": 43,
-    "Ming": 105,
-    "Qing": 181,
-    "Modern": 78
+    "Song": 125,
+    "Yuan": 40,
+    "Ming": 116,
+    "Qing": 153,
+    "Modern": 114
   }
 }

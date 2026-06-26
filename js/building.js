@@ -400,11 +400,16 @@ function buildEntrance(root, por, mat, lights, P, columnMat, trimMat, stoneMat, 
     addCollide(px - 1.2, pz - 1.2, px + 1.2, pz + 1.2);
   }
 
-  // museum-name sign mounted on the entablature, ABOVE the colonnade (clear of columns)
-  const board = new THREE.Mesh(new THREE.BoxGeometry(11, 2.6, 0.4), new THREE.MeshStandardMaterial({ color: 0x3a1410, roughness: 0.6 }));
-  board.position.set(cx, WALL_H + 0.55, frontZ - 0.35); root.add(board);
-  const sign = makeSign(`${BUILDING.nameZh}`, '#7c1f17', '#f5e6bf');
-  sign.scale.set(1.35, 1.35, 1); sign.position.set(cx, WALL_H + 0.55, frontZ - 0.14); root.add(sign);
+  // name plaque (匾额) hung below the eave in the clear CENTRAL bay — the gap
+  // between the two centre columns, below the entablature beam and roof, so
+  // neither a column nor the roof edge can block it.
+  const plaqueY = WALL_H - 1.7;
+  const trimB = new THREE.Mesh(new THREE.BoxGeometry(5.3, 1.7, 0.2), trimMat);
+  trimB.position.set(cx, plaqueY, frontZ - 0.5); root.add(trimB);
+  const board = new THREE.Mesh(new THREE.BoxGeometry(5.0, 1.4, 0.3), new THREE.MeshStandardMaterial({ color: 0x3a1410, roughness: 0.6 }));
+  board.position.set(cx, plaqueY, frontZ - 0.42); root.add(board);
+  const sign = makeSign(`${BUILDING.nameZh}`, '#3a1410', '#e6c66a');
+  sign.scale.set(0.62, 0.66, 1); sign.position.set(cx, plaqueY, frontZ - 0.26); root.add(sign);
 
   // approach landscaping + warm portico light
   buildLandscaping(root, cx, frontZ, steps * stepDepth, addCollide);
@@ -482,7 +487,10 @@ function makeSign(text, bg, fg) {
   const x = c.getContext('2d');
   x.fillStyle = bg; x.fillRect(0, 0, 1024, 256);
   x.strokeStyle = fg; x.lineWidth = 10; x.strokeRect(16, 16, 992, 224);
-  x.fillStyle = fg; x.font = 'bold 150px "KaiTi","STKaiti",serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.fillStyle = fg; x.textAlign = 'center'; x.textBaseline = 'middle';
+  // shrink the glyphs until the whole title sits comfortably inside the gilt border
+  let fs = 150;
+  do { x.font = `bold ${fs}px "KaiTi","STKaiti",serif`; fs -= 6; } while (x.measureText(text).width > 900 && fs > 60);
   x.fillText(text, 512, 138);
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
   const m = new THREE.Mesh(new THREE.PlaneGeometry(7.5, 1.9), new THREE.MeshBasicMaterial({ map: tex }));

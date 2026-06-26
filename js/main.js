@@ -88,6 +88,7 @@ async function boot() {
   window.__museum = {
     go(roomId, yaw = 0) { const r = world.rooms[roomId]; if (r) { camera.position.set(r.cx, 1.7, r.cz); camera.rotation.set(0, yaw, 0); } },
     look(yaw) { camera.rotation.set(0, yaw, 0); },
+    view(x, y, z, tx, ty, tz) { camera.position.set(x, y, z); camera.lookAt(tx, ty, tz); },
     pos: () => camera.position.toArray().map((n) => +n.toFixed(1)),
     stats: () => ({ pieces: art.pieces.length, rooms: Object.keys(world.rooms).length, collide: world.collide.length, visitors: visitors.npcs.length }),
     debug: () => art.debug(),
