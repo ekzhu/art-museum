@@ -92,7 +92,7 @@ async function boot() {
     pos: () => camera.position.toArray().map((n) => +n.toFixed(1)),
     stats: () => ({ pieces: art.pieces.length, rooms: Object.keys(world.rooms).length, collide: world.collide.length, visitors: visitors.npcs.length }),
     debug: () => art.debug(),
-    openDetail: () => art.pieces[0] && ui.openDetail(art.pieces[0]),
+    openDetail: (i = 0) => art.pieces[i] && ui.openDetail(art.pieces[i]),
     openCinema: () => ui.openCinema(FILMS),
     lookPiece: (i = 0) => {
       const list = art.pieces.filter((p) => p.data.featured);

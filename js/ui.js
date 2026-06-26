@@ -4,6 +4,8 @@
  * metadata + Wikimedia credit), the hall directory (with teleport), and the
  * pause/resume overlay tied to pointer-lock.
  */
+import { composeStoryHTML } from './lore.js';
+
 // High-resolution detail image via Special:FilePath (HTML <img>, any width, no CORS needed).
 function detailURL(d) {
   if (d.file) return `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(d.file)}?width=1500`;
@@ -57,7 +59,7 @@ export function createUI(opts) {
         <h2 id="d-title"></h2>
         <div id="d-creator" class="d-creator"></div>
         <dl id="d-facts"></dl>
-        <p id="d-desc"></p>
+        <div id="d-desc" class="d-story"></div>
         <div class="d-credit"><span id="d-credit"></span> · <a id="d-source" target="_blank" rel="noopener">View on Wikimedia ↗</a></div>
       </div>
     </div>
@@ -83,6 +85,7 @@ export function createUI(opts) {
   `;
 
   const $ = (s) => root.querySelector(s);
+  const hallsById = Object.fromEntries((halls || []).map((h) => [h.id, h]));
   const overlay = $('#overlay'), resume = $('#resume');
   const hallName = $('#hall-name'), hallSub = $('#hall-sub');
   const prompt = $('#prompt'), promptTitle = $('#prompt-title');
@@ -145,7 +148,7 @@ export function createUI(opts) {
     if (d.collection) facts.push(['Collection', d.collection]);
     if (d.origin) facts.push(['Origin', d.origin]);
     $('#d-facts').innerHTML = facts.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('');
-    $('#d-desc').textContent = d.description || (periodInfo[d.period] || '');
+    $('#d-desc').innerHTML = composeStoryHTML(d, periodInfo, hallsById);
     $('#d-credit').textContent = (d.credit || 'Wikimedia Commons') + (d.license ? ' · ' + d.license : '');
     $('#d-source').href = d.source || '#';
 
