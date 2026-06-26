@@ -1,29 +1,29 @@
 {
-  "total": 1700,
+  "total": 1010,
   "hallCounts": {
-    "bronze": 170,
-    "calligraphy": 130,
-    "ceramics": 230,
-    "decorative": 210,
-    "jade": 140,
-    "painting": 280,
-    "sculpture": 220,
-    "textiles": 150,
-    "tomb": 170
+    "bronze": 110,
+    "calligraphy": 90,
+    "ceramics": 130,
+    "decorative": 120,
+    "jade": 100,
+    "painting": 130,
+    "sculpture": 120,
+    "textiles": 100,
+    "tomb": 110
   },
   "periodCounts": {
-    "Neolithic": 63,
-    "Shang & Western Zhou": 103,
-    "Eastern Zhou": 34,
-    "Qin": 104,
-    "Han": 28,
-    "Six Dynasties": 13,
-    "Sui & Tang": 181,
+    "Neolithic": 30,
+    "Shang & Western Zhou": 75,
+    "Eastern Zhou": 33,
+    "Qin": 72,
+    "Han": 20,
+    "Six Dynasties": 9,
+    "Sui & Tang": 85,
     "Five Dynasties": 2,
-    "Song": 203,
-    "Yuan": 61,
-    "Ming": 202,
-    "Qing": 389,
-    "Modern": 110
+    "Song": 93,
+    "Yuan": 52,
+    "Ming": 119,
+    "Qing": 245,
+    "Modern": 45
   }
 }

@@ -14,10 +14,10 @@ import * as THREE from 'three';
 import { HALL_BY_ID } from './curation.js';
 import { WALL_H, CELL_W, CELL_D, T } from './building.js';
 
-const SLOT = 3.0;           // horizontal pitch between pieces
-const ART_Y = 2.75;         // vertical centre of a hung piece
-const MAX_W = 2.7, MAX_H = 3.1;
-const MAX_PARTITIONS = 5;
+const SLOT = 4.0;           // horizontal pitch between pieces (generous museum spacing)
+const ART_Y = 2.85;         // vertical centre of a hung piece
+const MAX_W = 3.3, MAX_H = 3.5;
+const MAX_PARTITIONS = 3;
 const LOAD_RADIUS = 46;     // metres: stream textures within this of player (covers a hall seen from its doorway)
 const MAX_TEXTURES = 140;   // LRU cap on simultaneously-loaded wall textures (500px ≈ 1.6MB each)
 const MAX_INFLIGHT = 8;

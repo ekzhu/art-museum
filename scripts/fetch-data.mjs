@@ -33,20 +33,20 @@ const UA =
   'ChineseArtMuseum/1.0 (https://github.com/ekzhu/art-museum; educational virtual museum) node';
 const SPARQL_ENDPOINT = 'https://query.wikidata.org/sparql';
 const COMMONS_API = 'https://commons.wikimedia.org/w/api.php';
-const WALL_WIDTH = 1280;   // px width requested during first enrichment
-const WALL_DISPLAY = 500;  // px width of the actual in-world wall textures (re-enrich); 500 is honored exactly
+const WALL_WIDTH = 500;    // px width of in-world wall textures (honored exactly by the API)
+const WALL_DISPLAY = 500;  // px width used by the --reenrich path; 500 is honored exactly
 
 // Per-hall display cap (keeps the museum balanced + performant). Quality-ranked.
 const HALL_CAP = {
-  painting: 280,
-  calligraphy: 130,
-  ceramics: 230,
-  bronze: 170,
-  jade: 140,
-  sculpture: 220,
-  tomb: 170,
-  textiles: 150,
-  decorative: 210,
+  painting: 130,
+  calligraphy: 90,
+  ceramics: 130,
+  bronze: 110,
+  jade: 100,
+  sculpture: 120,
+  tomb: 110,
+  textiles: 100,
+  decorative: 120,
 };
 
 // ----------------------------------------------------------------------------
@@ -322,6 +322,20 @@ const COMMONS_ROOTS = [
   { hall: 'decorative', cat: 'Inkstones' },
   // A little more painting depth from Commons (well-curated museum scans)
   { hall: 'painting', cat: 'Paintings in the Palace Museum' },
+
+  // High-provenance museum collections — well-catalogued, museum-quality scans
+  // (the curation pass strongly rewards these).
+  { hall: 'painting', cat: 'Chinese paintings in the Metropolitan Museum of Art' },
+  { hall: 'painting', cat: 'Chinese paintings in the Cleveland Museum of Art' },
+  { hall: 'calligraphy', cat: 'Chinese calligraphy in the Metropolitan Museum of Art' },
+  { hall: 'calligraphy', cat: 'Calligraphy by Wang Xizhi' },
+  { hall: 'calligraphy', cat: 'Calligraphy by Dong Qichang' },
+  { hall: 'calligraphy', cat: 'Calligraphy by Mi Fu' },
+  { hall: 'calligraphy', cat: 'Calligraphy by Su Shi' },
+  { hall: 'calligraphy', cat: 'Lantingji Xu' },
+  { hall: 'bronze', cat: 'Chinese bronzes in the Metropolitan Museum of Art' },
+  { hall: 'bronze', cat: 'Chinese bronzes in the British Museum' },
+  { hall: 'ceramics', cat: 'Chinese ceramics in the British Museum' },
 ];
 
 const MAX_FILES_PER_ROOT = 220;
@@ -605,6 +619,22 @@ function qualityScore(r, hasCreator, period, description) {
   return s;
 }
 
+// Curation score — heavily favours items with real museum provenance so the
+// per-hall cap keeps the best, not the most.
+function curationScore(r, hasCreator, period, strongArt, title, collection) {
+  let s = 0;
+  if (collection) s += 4;                      // held in a named collection
+  if (hasCreator) s += 4;                      // attributed to an artist
+  if (period) s += 2.5;
+  if (r.wikidata) s += 2;                       // catalogued on Wikidata
+  if (r.label && !/^Q\d+$/.test(r.label)) s += 2; // a catalogued title (not filename-derived)
+  if (strongArt) s += 1;
+  if (r.emDescription && r.emDescription.length > 40) s += 1;
+  if (looksJunky(title) || /,\s*[A-Za-z &]+ period$/.test(title)) s -= 2.5; // generic/synthesised
+  s += Math.min((r.w || 0), 2600) / 1300;       // prefer higher resolution
+  return s;
+}
+
 // Keyword → hall, used to de-pollute the Wikidata catch-all (which was tagged
 // 'painting' but actually returns every kind of Chinese-origin object).
 const HALL_KW = [
@@ -624,23 +654,64 @@ function reclassify(blob) {
 }
 const isBadCreator = (c) => !c || /^Q\d+$/.test(c) || /genid|https?:|\.well-known|^_:/.test(c);
 
+// Infer the holding collection from a Commons source category when Wikidata
+// doesn't supply one (Met / British Museum / Cleveland etc. crawl roots).
+const MUSEUMS = [
+  [/metropolitan museum/i, 'The Metropolitan Museum of Art'],
+  [/british museum/i, 'The British Museum'],
+  [/cleveland museum/i, 'Cleveland Museum of Art'],
+  [/national palace museum/i, 'National Palace Museum, Taipei'],
+  [/palace museum/i, 'Palace Museum, Beijing'],
+  [/freer|smithsonian/i, 'Smithsonian (Freer|Sackler)'],
+  [/victoria and albert/i, 'Victoria and Albert Museum'],
+  [/musée guimet|guimet/i, 'Musée Guimet'],
+  [/musée cernuschi|cernuschi/i, 'Musée Cernuschi'],
+  [/shanghai museum/i, 'Shanghai Museum'],
+  [/nanjing museum/i, 'Nanjing Museum'],
+  [/hunan museum/i, 'Hunan Museum'],
+  [/national museum of china/i, 'National Museum of China'],
+  [/louvre/i, 'Musée du Louvre'],
+];
+function deriveCollection(r) {
+  if (r.collections.length) return r.collections[0];
+  const cats = r.sourceCats.join(' ');
+  for (const [re, name] of MUSEUMS) if (re.test(cats)) return name.replace('|', ' / ');
+  return '';
+}
+
+// High-confidence NON-artwork signals (modern photos, activities, places, people,
+// commerce, transport, tools/process). Terms here essentially never title a real
+// historical artwork, so a match is a hard reject.
+const DENY = /\b(boeing|airbus|airline|aircraft|airport|aviation|locomotive|railway|railroad|\bsubway\b|metro station|automobile|motorcycle|\bhighway\b|skyscraper|stadium|\bhotel\b|restaurant|\bcafe\b|supermarket|\bmall\b|cityscape|skyline|downtown|\bfactory\b|\bairfield\b|\bschool\b|classroom|university campus|\blesson\b|\bclass\b|\bworkshop\b|demonstration|\brehearsal\b|performance|performing|competition|\bfestival\b|\bparade\b|\bceremony\b|\bwedding\b|conference|delegation|\btourist\b|tourism|\bselfie\b|cosplay|reenact|\bprotest\b|\brally\b|\bpresident\b|\bminister\b|politician|\belection\b|advertis|billboard|\blogo\b|\bpassport\b|banknote|postage|infographic|floor plan|former residence|\bsignboard\b|\bstorefront\b|\bshop\b|\bstore\b|writing brush|calligraphy brush|inkstick making|making of|\bhow to\b|\btutorial\b|\bmuseum exterior\b|\bstreet\b|\bmarket\b)\b|總統|合影|留念|总统|議員|纪念|紀念/i;
+
+// Positive artwork-type signal (object kinds we actually exhibit).
+const STRONG_ART = /\b(painting|scroll|album leaf|calligraph|porcelain|celadon|stoneware|pottery|ceramic|vase|bowl|\bjar\b|\bdish\b|\bcup\b|ewer|\bware\b|sancai|bronze|ritual|\bding\b|\bgui\b|\bzun\b|mirror|\bbell\b|\bjade\b|\bcong\b|lacquer|cloisonn|enamel|snuff|\bfan\b|inkstone|furniture|\bchair\b|\btable\b|cabinet|\bscreen\b|embroider|\bsilk\b|kesi|tapestry|brocade|\brobe\b|buddha|bodhisattva|guanyin|\bstele\b|statue|sculptur|relief|terracotta|tomb figure|mingqi|figurine|vessel|incense|teapot|\bseal\b|carving|hanging scroll|handscroll)\b/i;
+
 function finalize(rawArr) {
   const out = [];
   for (const r of rawArr) {
     if (!r.thumb || !r.full) continue;
-    if (r.w && r.w < 240) continue;
+    if (r.w && r.w < 320) continue;                          // require a reasonably sized image
     if (r.mime && !/^image\//.test(r.mime)) continue;
     if (/\b(map|diagram|chart|logo|signature|coat of arms|location|locator|graph)\b/i.test(r.file)) continue;
+
+    const blob = (r.types.join(' ') + ' ' + r.objectName + ' ' + r.sourceCats.join(' ') + ' ' +
+      r.genres.join(' ') + ' ' + r.materials.join(' ') + ' ' + (r.label || '') + ' ' + r.emDescription).toLowerCase();
+    if (DENY.test(blob) || DENY.test(r.file)) continue;       // hard-reject non-artworks
 
     const { period, year } = derivePeriod(r);
     const realCreator = r.creators.find((c) => !isBadCreator(c)) || null;  // Wikidata P170 only
     const creator = realCreator || 'Unknown';
 
+    const collection = deriveCollection(r);
+    // Provenance gate: drop items with no dynasty, no collection, no Wikidata id
+    // AND no artwork-type signal — these are the stray photos that pollute halls.
+    const strongArt = STRONG_ART.test(blob);
+    if (!r.wikidata && !collection && !period && !strongArt) continue;
+
     // Hall assignment, with catch-all de-pollution.
     let hall = pickHall(r);
     if (hall === 'painting') {
-      const blob = (r.types.join(' ') + ' ' + r.objectName + ' ' + r.sourceCats.join(' ') + ' ' +
-        r.genres.join(' ') + ' ' + r.materials.join(' ') + ' ' + (r.label || '')).toLowerCase();
       const kw = reclassify(blob);
       if (kw && kw !== 'painting') hall = kw;
       else if (!kw) {
@@ -654,9 +725,10 @@ function finalize(rawArr) {
     if (/^\s*(own work|self-?photograph)/i.test(description)) description = '';
     if (description.length > 560) description = description.slice(0, 557) + '…';
 
+    const title = deriveTitle(r, period);
     out.push({
       id: r.wikidata || 'F' + Math.abs(hashCode(r.file)),
-      title: deriveTitle(r, period),
+      title,
       hall,
       type: r.types[0] || niceType(r),
       creator,
@@ -664,7 +736,7 @@ function finalize(rawArr) {
       period,
       origin: r.originLabels[0] || '',
       materials: r.materials.slice(0, 4),
-      collection: r.collections[0] || '',
+      collection,
       genre: r.genres[0] || '',
       file: r.file,
       thumb: r.thumb, full: r.full, w: r.w, h: r.h,
@@ -672,7 +744,7 @@ function finalize(rawArr) {
       credit: cleanCredit(r.attribution) || 'Wikimedia Commons',
       source: r.descriptionurl || `https://commons.wikimedia.org/wiki/File:${encodeURIComponent(r.file)}`,
       description,
-      _q: qualityScore(r, !!realCreator, period, description),
+      _q: curationScore(r, !!realCreator, period, strongArt, title, collection),
     });
   }
 

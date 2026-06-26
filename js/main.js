@@ -114,7 +114,7 @@ async function boot() {
     if (room === activeRoom) return activeSet;
     activeRoom = room;
     activeSet.clear();
-    if (!room) { HALLS.forEach((h) => activeSet.add(h.id)); return activeSet; }
+    if (!room) return activeSet; // outside (plaza): no halls to draw
     const { r, c } = room;
     const add = (rr, cc) => { const id = world.MAP[rr] && world.MAP[rr][cc]; if (id && world.rooms[id] && world.rooms[id].hall) activeSet.add(id); };
     add(r, c); add(r - 1, c); add(r + 1, c); add(r, c - 1); add(r, c + 1);
