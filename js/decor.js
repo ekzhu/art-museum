@@ -114,8 +114,8 @@ function decorHall(g, room, world) {
   // name banner on the back wall, up high
   banner(g, cx + CELL_W * 0.36, 4.2, cz, -Math.PI / 2, hall);
   // soft warm fill light so the hall reads well (kept few for performance)
-  const fill = new THREE.PointLight(0xfff0d8, 0.32, CELL_W, 2.0);
-  fill.position.set(cx, WALL_H - 1.5, cz); g.add(fill);
+  const fill = new THREE.PointLight(0xfff0d8, 0.28, CELL_W, 1.8);
+  fill.position.set(cx, 3.6, cz); g.add(fill);
   // a gallery bench, clear of the central partitions and the doorways
   placeBench(g, world, cx - CELL_W * 0.24, cz + CELL_D * 0.3, 0, 3.2);
   placeBench(g, world, cx + CELL_W * 0.24, cz - CELL_D * 0.3, 0, 3.2);

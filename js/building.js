@@ -52,7 +52,7 @@ export function buildMuseum(scene) {
   const matCache = new Map();
   const mat = (key, make) => { if (!matCache.has(key)) matCache.set(key, make()); return matCache.get(key); };
   const beamMat = mat('beam', () => new THREE.MeshStandardMaterial({ map: TX.wood(P.beam, 3), roughness: 0.8 }));
-  const trimMat = mat('trim', () => new THREE.MeshStandardMaterial({ color: col(P.columnGold), roughness: 0.4, metalness: 0.55 }));
+  const trimMat = mat('trim', () => new THREE.MeshStandardMaterial({ color: col(P.columnGold), roughness: 0.62, metalness: 0.2 }));
   const columnMat = mat('col', () => new THREE.MeshStandardMaterial({ color: col(P.column), roughness: 0.5 }));
   const shellMat = mat('shell', () => new THREE.MeshStandardMaterial({ map: TX.plaster(P.wall, 2), color: 0xeae3d4, roughness: 0.95 }));
   const stoneMat = mat('stone', () => new THREE.MeshStandardMaterial({ map: TX.tiles('#cdc4ad', '#b3a98c', 4, 6), roughness: 0.8 }));
@@ -287,7 +287,7 @@ export function buildMuseum(scene) {
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(1400, 1400),
     new THREE.MeshStandardMaterial({ color: 0x8f9c79, roughness: 1 }));
   ground.rotation.x = -Math.PI / 2; ground.position.y = -0.06; scene.add(ground);
-  const sunLight = new THREE.DirectionalLight(0xfff4e0, 0.6); sunLight.position.set(60, 90, 40); scene.add(sunLight);
+  const sunLight = new THREE.DirectionalLight(0xfff4e0, 0.32); sunLight.position.set(60, 90, 40); scene.add(sunLight);
 
   // spawn on the plaza, south of the portico, looking north (-Z)
   const por = rooms.portico;
@@ -325,7 +325,7 @@ function buildAtrium(root, atrium, mat, lights, P, columnMat, trimMat) {
   const topHalf = baseHalf * (1 - (rings - 1) / (rings + 1));
   const skyPanel = new THREE.Mesh(new THREE.PlaneGeometry(topHalf * 2, topHalf * 2), new THREE.MeshBasicMaterial({ map: TX.sky(), fog: false }));
   skyPanel.rotation.x = Math.PI / 2; skyPanel.position.set(cx, WALL_H + rings * 0.8, cz); root.add(skyPanel);
-  const sun = new THREE.PointLight(0xfff2d6, 1.7, 90, 1.3); sun.position.set(cx, WALL_H + 2, cz); root.add(sun); lights.push(sun);
+  const sun = new THREE.PointLight(0xfff2d6, 1.2, 90, 1.3); sun.position.set(cx, WALL_H + 2, cz); root.add(sun); lights.push(sun);
 
   // four grand columns framing the rotunda
   for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {

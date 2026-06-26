@@ -10,6 +10,7 @@ import { buildMuseum, CELL_D } from './building.js';
 import { buildDecor } from './decor.js';
 import { placeArtworks } from './artworks.js';
 import { buildTheatre, FILMS } from './theatre.js';
+import { createVisitors } from './npc.js';
 import { createPlayer } from './player.js';
 import { createUI } from './ui.js';
 
@@ -22,7 +23,7 @@ async function boot() {
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.08;
+  renderer.toneMappingExposure = 0.92;
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0xcfc8b8);
@@ -31,9 +32,9 @@ async function boot() {
   const camera = new THREE.PerspectiveCamera(74, innerWidth / innerHeight, 0.1, 150);
 
   // lighting (architecture only — artworks are unlit for fidelity + zero cost)
-  scene.add(new THREE.HemisphereLight(0xfff4e2, 0x3a3326, 1.05));
-  scene.add(new THREE.AmbientLight(0xffffff, 0.42));
-  const sun = new THREE.DirectionalLight(0xfff0d8, 0.55);
+  scene.add(new THREE.HemisphereLight(0xfff4e2, 0x3a3326, 0.78));
+  scene.add(new THREE.AmbientLight(0xffffff, 0.26));
+  const sun = new THREE.DirectionalLight(0xfff0d8, 0.18);
   sun.position.set(24, 50, 16);
   scene.add(sun);
 
@@ -73,6 +74,7 @@ async function boot() {
   buildDecor(scene, world);
   const art = placeArtworks(scene, world, artworks);
   const theatre = buildTheatre(scene, world);
+  const visitors = createVisitors(scene, world, 2);
   ui.buildDirectory(counts);
 
   ui.setLoading('Lighting the lanterns…', 0.92);
@@ -141,6 +143,7 @@ async function boot() {
     const room = world.roomAt(camera.position.x, camera.position.z);
     ui.setRoom(room);
     art.update(camera, activeHalls(room));
+    visitors.update(dt, camera.position);
     if (player.isLocked() && !ui.isModalOpen()) {
       const piece = art.getLookedAt(camera);
       if (piece) { looked = { kind: 'art', piece }; ui.setPrompt(piece.data.title, 'view artwork'); }
