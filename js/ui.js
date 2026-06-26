@@ -19,7 +19,7 @@ export function createUI(opts) {
   root.innerHTML = `
     <div id="crosshair"></div>
     <div id="hud-top"><div id="hall-name"></div><div id="hall-sub"></div></div>
-    <div id="prompt" class="hidden"><kbd>E</kbd> / click — view artwork <span id="prompt-title"></span></div>
+    <div id="prompt" class="hidden"><kbd>E</kbd> / click — <span id="prompt-action">view</span> <span id="prompt-title"></span></div>
     <div id="hint">
       <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move</span>
       <span><kbd>Shift</kbd> stride</span><span>mouse look</span>
@@ -59,6 +59,18 @@ export function createUI(opts) {
         <dl id="d-facts"></dl>
         <p id="d-desc"></p>
         <div class="d-credit"><span id="d-credit"></span> · <a id="d-source" target="_blank" rel="noopener">View on Wikimedia ↗</a></div>
+      </div>
+    </div>
+
+    <div id="cinema" class="panel hidden">
+      <button class="close" data-close>✕</button>
+      <div class="cinema-main">
+        <div class="cinema-frame"><div class="spinner"></div><iframe id="cinema-iframe" allow="autoplay; encrypted-media; fullscreen" allowfullscreen frameborder="0"></iframe></div>
+        <div id="cinema-now"></div>
+      </div>
+      <div class="cinema-list">
+        <h3>纪录片影院<span class="muted"> · Now Showing</span></h3>
+        <div id="cinema-films"></div>
       </div>
     </div>
 
@@ -104,11 +116,12 @@ export function createUI(opts) {
   }
 
   // ---- interaction prompt ---- (guarded so we don't touch the DOM every frame)
-  let lastPromptPiece = undefined;
-  function setPrompt(piece) {
-    if (piece === lastPromptPiece) return;
-    lastPromptPiece = piece;
-    if (piece) { prompt.classList.remove('hidden'); promptTitle.textContent = '— ' + (piece.data.title || ''); }
+  const promptAction = $('#prompt-action');
+  let lastPromptLabel = undefined;
+  function setPrompt(label, action) {
+    if (label === lastPromptLabel) return;
+    lastPromptLabel = label;
+    if (label) { prompt.classList.remove('hidden'); promptAction.textContent = action || 'view'; promptTitle.textContent = '— ' + label; }
     else prompt.classList.add('hidden');
   }
 
@@ -144,7 +157,30 @@ export function createUI(opts) {
     modal = false;
     detail.classList.add('hidden');
     directory.classList.add('hidden');
+    cinema.classList.add('hidden');
+    cinemaIframe.src = 'about:blank'; // stop playback
     img.src = '';
+  }
+
+  // ---- cinema ----
+  const cinema = $('#cinema'), cinemaIframe = $('#cinema-iframe'), cinemaNow = $('#cinema-now'), cinemaFilms = $('#cinema-films');
+  let cinemaBuilt = false;
+  function playFilm(f) {
+    cinema.classList.add('loading');
+    cinemaIframe.onload = () => cinema.classList.remove('loading');
+    cinemaIframe.src = `https://www.youtube-nocookie.com/embed/${f.id}?autoplay=1&rel=0&modestbranding=1`;
+    cinemaNow.innerHTML = `<div class="now-topic">${f.topic}</div><div class="now-title">${esc(f.title)}</div>`;
+    cinemaFilms.querySelectorAll('.film').forEach((el) => el.classList.toggle('active', el.dataset.id === f.id));
+  }
+  function openCinema(films) {
+    modal = true;
+    if (!cinemaBuilt) {
+      cinemaFilms.innerHTML = films.map((f) => `<button class="film" data-id="${f.id}"><span class="film-topic">${f.topic}</span><span class="film-title">${esc(f.title)}</span></button>`).join('');
+      cinemaFilms.querySelectorAll('.film').forEach((el) => el.addEventListener('click', () => playFilm(films.find((f) => f.id === el.dataset.id))));
+      cinemaBuilt = true;
+    }
+    cinema.classList.remove('hidden');
+    playFilm(films[0]);
   }
 
   // ---- directory ----
@@ -178,7 +214,7 @@ export function createUI(opts) {
   root.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => { closeModals(); onEnter(); }));
 
   return {
-    setLoading, ready, setRoom, setPrompt, openDetail, closeModals, toggleDirectory, showResume, buildDirectory,
+    setLoading, ready, setRoom, setPrompt, openDetail, openCinema, closeModals, toggleDirectory, showResume, buildDirectory,
     isModalOpen: () => modal,
   };
 }

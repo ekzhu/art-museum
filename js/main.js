@@ -9,6 +9,7 @@ import { HALLS, PERIOD_INFO, BUILDING } from './curation.js';
 import { buildMuseum, CELL_D } from './building.js';
 import { buildDecor } from './decor.js';
 import { placeArtworks } from './artworks.js';
+import { buildTheatre, FILMS } from './theatre.js';
 import { createPlayer } from './player.js';
 import { createUI } from './ui.js';
 
@@ -71,6 +72,7 @@ async function boot() {
   await frame();
   buildDecor(scene, world);
   const art = placeArtworks(scene, world, artworks);
+  const theatre = buildTheatre(scene, world);
   ui.buildDirectory(counts);
 
   ui.setLoading('Lighting the lanterns…', 0.92);
@@ -91,9 +93,18 @@ async function boot() {
 
   // ---- interaction ----
   let looked = null;
+  const iray = new THREE.Raycaster(); iray.far = 9;
+  const center2 = new THREE.Vector2(0, 0);
+  const lookInteractable = () => {
+    if (!theatre.interactables.length) return null;
+    iray.setFromCamera(center2, camera);
+    const hits = iray.intersectObjects(theatre.interactables, false);
+    return hits.length ? hits[0].object : null;
+  };
   const interact = () => {
-    if (ui.isModalOpen()) return;
-    if (looked) { ui.openDetail(looked); player.controls.unlock(); }
+    if (ui.isModalOpen() || !looked) return;
+    if (looked.kind === 'art') { ui.openDetail(looked.piece); player.controls.unlock(); }
+    else if (looked.kind === 'cinema') { ui.openCinema(FILMS); player.controls.unlock(); }
   };
   document.addEventListener('keydown', (e) => {
     if (e.code === 'KeyE') interact();
@@ -130,8 +141,15 @@ async function boot() {
     const room = world.roomAt(camera.position.x, camera.position.z);
     ui.setRoom(room);
     art.update(camera, activeHalls(room));
-    if (player.isLocked() && !ui.isModalOpen()) { looked = art.getLookedAt(camera); ui.setPrompt(looked); }
-    else { looked = null; ui.setPrompt(null); }
+    if (player.isLocked() && !ui.isModalOpen()) {
+      const piece = art.getLookedAt(camera);
+      if (piece) { looked = { kind: 'art', piece }; ui.setPrompt(piece.data.title, 'view artwork'); }
+      else {
+        const it = lookInteractable();
+        if (it && it.userData.kind === 'cinema') { looked = { kind: 'cinema' }; ui.setPrompt('a documentary film', 'enter the theatre'); }
+        else { looked = null; ui.setPrompt(null); }
+      }
+    } else { looked = null; ui.setPrompt(null); }
     renderer.render(scene, camera);
   }
   loop();
